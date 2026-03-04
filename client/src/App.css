@@ -1,0 +1,118 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    height: 100vh;
+    font-family: Arial, sans-serif;
+}
+
+.App {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+}
+
+.Header {
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 2px solid #ddd;
+    padding: 20px 40px;
+    min-height: 70px;
+}
+
+.Aside {
+    flex: 0.35;
+    background-color: #f0f0f0;
+    padding: 20px;
+    border-right: 1px solid #ddd;
+    overflow-y: auto;
+}
+
+.WorkPanel {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    padding: 20px;
+    background: #fff;
+}
+
+.Canvas {
+    display: flex;
+    flex: 1;
+    justify-content: center;
+    align-items: center;
+    background-color: #fafafa;
+    border: 2px dashed #ccc;
+    border-radius: 8px;
+    margin-bottom: 15px;
+    min-height: 400px;
+}
+
+.Main {
+    display: flex;
+    flex: 1;
+    min-height: 0;
+}
+
+.ToolBar {
+    display: flex;
+    overflow-x: auto;
+    width: 100%;
+    gap: 15px;
+    background-color: #f5f5f5;
+    border: 1px solid #eee;
+    border-radius: 8px;
+    padding: 15px 30px;
+    min-height: 70px;
+}
+
+.btn {
+    padding: 8px 16px;
+    background: #007bff;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    margin-left: 10px;
+}
+
+.btn:hover {
+    background: #0056b3;
+}
+
+.tool-group {
+    margin-bottom: 25px;
+}
+
+.tool-group h4 {
+    margin-bottom: 10px;
+    color: #555;
+}
+
+.tool-btn {
+    width: 100%;
+    padding: 8px;
+    margin-bottom: 8px;
+    background: white;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    cursor: pointer;
+    text-align: left;
+    font-size: 14px;
+}
+
+.tool-btn:hover {
+    background: #e9ecef;
+    border-color: #007bff;
+}
+
+.Canvas {
+    color: #999;
+    font-size: 24px;
+}
