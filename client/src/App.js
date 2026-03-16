@@ -12,10 +12,336 @@ function App() {
   const [modalWidth, setModalWidth] = useState(0);
   const [modalHeight, setModalHeight] = useState(0);
   const [modalLock, setModalLock] = useState(false);
+ 
+  const [hasChange, setHasChange] = useState(false);
+  const [originalImg, setOriginalImg] = useState(null);
+  const [imageId, setImageId] = useState(null);
+  const [versions, setVersions] = useState([]);
+  const [currentVersion, setCurrentVersion] = useState(-1);
+
+  function goPrev() {
+    if (currentVersion > 0) {
+      const newVersion = currentVersion - 1;
+      setCurrentVersion(newVersion);
+      setCurrentImage(versions[newVersion].path);
+
+      if (versions[newVersion].params) {
+        setBrightness(versions[newVersion].params.brightness);
+        setContrast(versions[newVersion].params.contrast);
+        setSaturation(versions[newVersion].params.saturation);
+        setBlur(versions[newVersion].params.blur);
+        setTemperature(versions[newVersion].params.temperature);
+        setParamValue(versions[newVersion].params[currentParam]);
+      }
+
+      setHasChange(false);
+    }
+  }
+
+  function goNext() {
+    if (currentVersion < versions.length - 1) {
+      const newVersion = currentVersion + 1;
+      setCurrentVersion(newVersion);
+      setCurrentImage(versions[newVersion].path);
+
+      if (versions[newVersion].params) {
+        setBrightness(versions[newVersion].params.brightness);
+        setContrast(versions[newVersion].params.contrast);
+        setSaturation(versions[newVersion].params.saturation);
+        setBlur(versions[newVersion].params.blur);
+        setTemperature(versions[newVersion].params.temperature);
+        setParamValue(versions[newVersion].params[currentParam]);
+      }
+
+      setHasChange(false);
+    }
+  }
+
+
+  function resetChanges() {
+    if (versions.length === 0) return;
+
+    const original = versions[0];
+
+    setVersions([original]);
+    setCurrentVersion(0);
+    setCurrentImage(original.path);
+
+    setBrightness(0);
+    setContrast(0);
+    setSaturation(0);
+    setBlur(0);
+    setTemperature(0);
+    setParamValue(0);
+
+    setHasChange(false);
+  }
+
+
+  const [brightness, setBrightness] = useState(0);
+  const [contrast, setContrast] = useState(0);
+  const [saturation, setSaturation] = useState(0);
+  const [blur, setBlur] = useState(0);
+  const [temperature, setTemperature] = useState(0);
+
+ function preview() {
+    return {
+      filter: `
+        brightness(${1 + brightness/100})
+        contrast(${1 + contrast/100})
+        saturate(${1 + saturation/100})
+        ${blur> 0 ? `blur(${blur}px)` : ''}
+      `
+    };
+}
+
+  function tools () {
+    switch(active) {
+      case 'crop':
+        return (
+          <div className="Tools">
+              <div className={activeTool === 'cropTool' ? 'active' : ''} onClick={() => setActiveTool('cropTool')}>                      
+                <svg width="35px" height="35px" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" strokeWidth="3" stroke="currentColor" fill="none"><path d="M6.81,17.68H44.63a1,1,0,0,1,1,1v39"/><path d="M57.19,46.32H18.37a1,1,0,0,1-1-1v-39"/></svg>
+                <span>Обрезка</span>
+              </div>
+
+              <div className={activeTool === 'rotateTool' ? 'active' : ''} onClick={() => setActiveTool('rotateTool')}>                              
+                <svg width="35px" height="35px" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M16 7V10M16 10H13M16 10C14.9173 9.23345 13.9223 8.23101 12.5576 8.03902C11.6988 7.91819 10.824 8.07974 10.0649 8.4993C9.3059 8.91887 8.7038 9.57374 8.34934 10.3652C7.99489 11.1567 7.90728 12.042 8.09972 12.8876C8.29217 13.7332 8.75424 14.4933 9.41631 15.0535M15.7733 13.3292C15.4851 14.1471 14.9388 14.8493 14.2169 15.3298C13.4949 15.8103 12.6363 16.0432 11.7704 15.9934M4 6V4H20V20H4V10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+                <span>Поворот 90°</span>
+              </div>
+
+              <div className={activeTool === 'flipHorizontal' ? 'active' : ''} onClick={() => setActiveTool('flipHorizontal')}>                     
+                <svg width="35px" height="35px" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                  <path fillRule="evenodd" clipRule="evenodd" d="M15.079 3.46209C15.3762 3.17355 15.851 3.18054 16.1396 3.47771L19.538 6.9777C19.8205 7.26871 19.8205 7.73162 19.538 8.02263L16.1396 11.5226C15.851 11.8198 15.3762 11.8268 15.079 11.5382C14.7819 11.2497 14.7749 10.7749 15.0634 10.4777L17.2263 8.25015L4.99989 8.25015C4.58567 8.25015 4.24989 7.91437 4.24989 7.50015C4.24989 7.08594 4.58567 6.75015 4.99989 6.75015L17.2263 6.75015L15.0634 4.52264C14.7749 4.22546 14.7819 3.75064 15.079 3.46209ZM8.92071 12.4618C9.21788 12.7504 9.22488 13.2252 8.93633 13.5224L6.77327 15.7501L18.9999 15.7501C19.4141 15.7501 19.7499 16.0859 19.7499 16.5001C19.7499 16.9143 19.4141 17.2501 18.9999 17.2501L6.77366 17.2501L8.93633 19.4774C9.22488 19.7746 9.21788 20.2494 8.92071 20.538C8.62353 20.8265 8.14871 20.8195 7.86016 20.5224L4.46177 17.0224C4.17922 16.7314 4.17922 16.2685 4.46177 15.9774L7.86016 12.4775C8.14871 12.1803 8.62353 12.1733 8.92071 12.4618Z"/>
+                </svg>
+                <span>Горизонтальное отражение</span>
+              </div>
+
+              <div className={activeTool === 'flipVertical' ? 'active' : ''} onClick={() => setActiveTool('flipVertical')}>                    
+                <svg width="35px" height="35px" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                  <path fillRule="evenodd" clipRule="evenodd" d="M7.49976 4.25001C7.91398 4.25001 8.24976 4.5858 8.24976 5.00001L8.24976 17.2266L10.4775 15.0636C10.7747 14.775 11.2495 14.782 11.538 15.0792C11.8266 15.3763 11.8196 15.8512 11.5224 16.1397L8.02243 19.5381C7.73142 19.8207 7.26851 19.8207 6.9775 19.5381L3.47751 16.1397C3.18034 15.8512 3.17335 15.3763 3.4619 15.0792C3.75044 14.782 4.22527 14.775 4.52244 15.0636L6.74976 17.2262L6.74976 5.00001C6.74976 4.5858 7.08555 4.25001 7.49976 4.25001Z"/>
+                  <path fillRule="evenodd" clipRule="evenodd" d="M15.9773 4.4619C16.2683 4.17934 16.7312 4.17934 17.0222 4.4619L20.5222 7.86029C20.8193 8.14884 20.8263 8.62366 20.5378 8.92083C20.2492 9.21801 19.7744 9.225 19.4772 8.93645L17.2497 6.7736L17.2497 19C17.2497 19.4142 16.9139 19.75 16.4997 19.75C16.0855 19.75 15.7497 19.4142 15.7497 19L15.7497 6.77358L13.5222 8.93645C13.225 9.225 12.7502 9.21801 12.4616 8.92083C12.1731 8.62366 12.1801 8.14884 12.4773 7.86029L15.9773 4.4619Z"/>
+                </svg>
+                <span>Вертикальное отражение</span>
+              </div>
+            </div>
+        );
+      
+      case 'parameters':
+        return (
+          <div className="Tools-parameters">
+              <div className="range">
+                <label htmlFor="range-line">{paramLabel}</label>
+                <input id="range-line" type="range" min={paramMin} max={paramMax} value={paramValue} onChange={paramChange} />
+                <span>{paramValue}</span>
+              </div>
+              <div>
+
+              </div>
+              <div className="Tools">
+              <div className={currentParam === 'brightness' ? 'active' : ''} onClick={() => selectParameter('brightness')}>                                     
+                <svg width="35px" height="35px" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" fill="currentColor" class="bi bi-brightness-high">
+                  <path d="M8 11a3 3 0 1 1 0-6 3 3 0 0 1 0 6zm0 1a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM8 0a.5.5 0 0 1 .5.5v2a.5.5 0 0 1-1 0v-2A.5.5 0 0 1 8 0zm0 13a.5.5 0 0 1 .5.5v2a.5.5 0 0 1-1 0v-2A.5.5 0 0 1 8 13zm8-5a.5.5 0 0 1-.5.5h-2a.5.5 0 0 1 0-1h2a.5.5 0 0 1 .5.5zM3 8a.5.5 0 0 1-.5.5h-2a.5.5 0 0 1 0-1h2A.5.5 0 0 1 3 8zm10.657-5.657a.5.5 0 0 1 0 .707l-1.414 1.415a.5.5 0 1 1-.707-.708l1.414-1.414a.5.5 0 0 1 .707 0zm-9.193 9.193a.5.5 0 0 1 0 .707L3.05 13.657a.5.5 0 0 1-.707-.707l1.414-1.414a.5.5 0 0 1 .707 0zm9.193 2.121a.5.5 0 0 1-.707 0l-1.414-1.414a.5.5 0 0 1 .707-.707l1.414 1.414a.5.5 0 0 1 0 .707zM4.464 4.465a.5.5 0 0 1-.707 0L2.343 3.05a.5.5 0 1 1 .707-.707l1.414 1.414a.5.5 0 0 1 0 .708z"/>
+                </svg>
+                <span>Яркость</span>          
+              </div>
+
+              <div className={currentParam === 'contrast' ? 'active' : ''} onClick={() => selectParameter('contrast')}>                                                  
+                <svg fill="currentColor" width="35px" height="35px" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg"><path d="M256,32A224,224,0,0,0,97.61,414.39,224,224,0,1,0,414.39,97.61,222.53,222.53,0,0,0,256,32ZM64,256C64,150.13,150.13,64,256,64V448C150.13,448,64,361.87,64,256Z"/></svg>
+                <span>Контраст</span>            
+              </div>
+              <div className={currentParam === 'saturation' ? 'active' : ''} onClick={() => selectParameter('saturation')}>                                                                                             
+              <svg fill="currentColor" width="35px" height="35px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path fillRule="evenodd" d="M20,7.87279794 C19.4940015,6.89397574 18.8136364,6.01990475 18,5.29168048 L18,18.7083195 C18.8136364,17.9800953 19.4940015,17.1060243 20,16.1272021 L20,7.87279794 Z M16,3.93551965 C15.3714959,3.62317975 14.7013005,3.38214996 14,3.22301642 L14,20.7769836 C14.7013005,20.61785 15.3714959,20.3768202 16,20.0644804 L16,3.93551965 Z M12,3 C7.02943725,3 3,7.02943725 3,12 C3,16.9705627 7.02943725,21 12,21 L12,3 Z M12,23 C5.92486775,23 1,18.0751322 1,12 C1,5.92486775 5.92486775,1 12,1 C18.0751322,1 23,5.92486775 23,12 C23,18.0751322 18.0751322,23 12,23 Z"/>
+              </svg>                           
+                <span>Насыщенность</span>            
+              </div>
+              <div className={currentParam === 'blur' ? 'active' : ''} onClick={() => selectParameter('blur')}>                                             
+                <svg width="35px" height="35px" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+                  <path fill="var(--ci-primary-color, currentColor)" d="M394.633,220.663,269.475,25.174a16,16,0,0,0-26.95,0L117.364,220.665A170.531,170.531,0,0,0,84.1,322.3c0,94.785,77.113,171.9,171.9,171.9s171.9-77.113,171.9-171.9A170.519,170.519,0,0,0,394.633,220.663ZM256,462.2c-77.14,0-139.9-62.758-139.9-139.9a138.758,138.758,0,0,1,27.321-83.058q.319-.432.608-.884L256,63.475,367.967,238.359q.288.453.608.884A138.754,138.754,0,0,1,395.9,322.3C395.9,399.441,333.14,462.2,256,462.2Z" class="ci-primary"/>
+                </svg>
+                 <span>Размытие</span>           
+              </div>
+
+              <div className={currentParam === 'temperature' ? 'active' : ''} onClick={() => selectParameter('temperature')}>                    
+                <svg fill="currentColor" width="35px" height="35px" viewBox="0 0 32 32" version="1.1" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M20.75 6.008c0-6.246-9.501-6.248-9.5 0v13.238c-1.235 1.224-2 2.921-2 4.796 0 3.728 3.022 6.75 6.75 6.75s6.75-3.022 6.75-6.75c0-1.875-0.765-3.572-2-4.796l-0.001-0zM16 29.25c-2.9-0-5.25-2.351-5.25-5.251 0-1.553 0.674-2.948 1.745-3.909l0.005-0.004 0.006-0.012c0.13-0.122 0.215-0.29 0.231-0.477l0-0.003c0.001-0.014 0.007-0.024 0.008-0.038l0.006-0.029v-13.52c-0.003-0.053-0.005-0.115-0.005-0.178 0-1.704 1.381-3.085 3.085-3.085 0.060 0 0.12 0.002 0.179 0.005l-0.008-0c0.051-0.003 0.11-0.005 0.17-0.005 1.704 0 3.085 1.381 3.085 3.085 0 0.063-0.002 0.125-0.006 0.186l0-0.008v13.52l0.006 0.029 0.007 0.036c0.015 0.191 0.101 0.36 0.231 0.482l0 0 0.006 0.012c1.076 0.966 1.75 2.361 1.75 3.913 0 2.9-2.35 5.25-5.25 5.251h-0zM16.75 21.367v-11.522c0-0.414-0.336-0.75-0.75-0.75s-0.75 0.336-0.75 0.75v0 11.522c-1.164 0.338-2 1.394-2 2.646 0 1.519 1.231 2.75 2.75 2.75s2.75-1.231 2.75-2.75c0-1.252-0.836-2.308-1.981-2.641l-0.019-0.005zM26.5 2.25c-1.795 0-3.25 1.455-3.25 3.25s1.455 3.25 3.25 3.25c1.795 0 3.25-1.455 3.25-3.25v0c-0.002-1.794-1.456-3.248-3.25-3.25h-0zM26.5 7.25c-0.966 0-1.75-0.784-1.75-1.75s0.784-1.75 1.75-1.75c0.966 0 1.75 0.784 1.75 1.75v0c-0.001 0.966-0.784 1.749-1.75 1.75h-0z"></path>
+                </svg>
+                <span>Температура</span>              
+              </div>
+            </div>
+          </div>
+        );
+      
+      case 'filters':
+        return (
+          <div className="Tools">
+            <div>Оригинал</div>
+            <div>Черно-белый</div>
+            <div>Сепия</div>
+            <div>Инверсия</div>
+          </div>
+        );
+      
+      case 'resize':
+        return (
+          <div className="Tools">
+              <div className="width">
+                <label htmlFor="width">Ширина</label>
+                <input id="width" type="number" max={9999} min={0} value={modalWidth} onChange={changeWidth}></input>
+              </div>
+              <button className="lock" onClick={clickLock}>
+                {modalLock ?                    
+                  <svg width="35px" height="35px" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <rect x="3" y="10" width="18" height="12" rx="2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                  <path d="M6 6C6 4.34315 7.34315 3 9 3H15C16.6569 3 18 4.34315 18 6V10H6V6Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>             
+                :                 
+                  <svg width="35px" height="35px" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <rect x="3" y="10" width="18" height="12" rx="2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                  <path d="M6 10V5C6 3.34315 7.34315 2 9 2H15C16.6569 2 18 3.34315 18 5V6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                }
+              </button>
+              <div className="height">
+                <label htmlFor="height">Высота</label>
+                <input className="height" type="number" max={9999} min={0} onChange={changeHeight} value={modalHeight}></input>
+              </div>
+
+              <div className="default">                     
+                <svg fill="currentColor" width="40px" height="40px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M5,6.3422181 C6.68697264,4.25541041 9.23673432,3 12,3 C16.9705627,3 21,7.02943725 21,12 C21,16.9705627 16.9705627,21 12,21 C7.23546573,21 3.30392987,17.2866561 3.01673028,12.5530434 C3.00000681,12.2774079 3.2098965,12.0404041 3.48553201,12.0236806 C3.76116753,12.0069572 3.99817131,12.2168469 4.01489477,12.4924824 C4.27011855,16.6990708 7.76500658,20 12,20 C16.418278,20 20,16.418278 20,12 C20,7.581722 16.418278,4 12,4 C9.53058015,4 7.25395153,5.12713252 5.75425065,7 L8.5,7 C8.77614237,7 9,7.22385763 9,7.5 C9,7.77614237 8.77614237,8 8.5,8 L4.5,8 C4.22385763,8 4,7.77614237 4,7.5 L4,3.5 C4,3.22385763 4.22385763,3 4.5,3 C4.77614237,3 5,3.22385763 5,3.5 L5,6.3422181 Z"/>
+                </svg>              
+              </div>
+            </div>
+        );
+    }
+  }
+
+  const [currentParam, setCurrentParam] = useState('brightness');
+  const [paramValue, setParamValue] = useState(0);
+  const [paramLabel, setParamLabel] = useState('Яркость');
+  const [paramMin, setParamMin] = useState(-100);
+  const [paramMax, setParamMax] = useState(100);
+
+  function selectParameter(param) {
+    setCurrentParam(param);
+
+    switch (param) {
+      case 'brightness':
+        setParamLabel('Яркость');
+        setParamMin(-100);
+        setParamMax(100);
+        setParamValue(brightness);
+        break;
+       case 'contrast':
+        setParamLabel('Контраст');
+        setParamMin(-100);
+        setParamMax(100);
+        setParamValue(contrast);
+        break;
+      case 'saturation':
+        setParamLabel('Насыщенность');
+        setParamMin(-100);
+        setParamMax(100);
+        setParamValue(saturation);
+        break;
+      case 'blur':
+        setParamLabel('Размытие');
+        setParamMin(0);
+        setParamMax(20);
+        setParamValue(blur);
+        break;
+      case 'temperature':
+        setParamLabel('Температура');
+        setParamMin(-100);
+        setParamMax(100);
+        setParamValue(temperature);
+        break;
+    }
+  }
+
+  function paramChange (e) {
+    const newValue = Number(e.target.value);
+    setParamValue(newValue);
+
+    switch(currentParam) {
+      case 'brightness':
+        setBrightness(newValue);
+        break;
+      case 'contrast':
+        setContrast(newValue);
+        break;
+      case 'saturation':
+        setSaturation(newValue);
+        break;
+      case 'blur':
+        setBlur(newValue);
+        break;
+      case 'temperature':
+        setTemperature(newValue);
+        break;
+    }
+    setHasChange(true);
+  }
+
+  async function applyFilter() {
+    if (!originalImg|| !imageId) return;
+
+    try {
+      const response = await fetch(originalImg);
+      const blob = await response.blob();
+
+      const formData = new FormData();
+      formData.append('image', blob, 'image.jpg');
+      formData.append('imageId', imageId);
+      formData.append('version', currentVersion);
+
+      formData.append('brightness', brightness);
+      formData.append('contrast', contrast);
+      formData.append('saturation', saturation);
+      formData.append('blur', blur);
+      formData.append('temperature', temperature);
+
+      const res = await fetch(`http://localhost:3001/file/filters`, {
+        method: 'POST',
+        body: formData
+      });
+
+      const data = await res.json();
+
+      if (data.path) {
+        const newVersion = {
+          path: `http://localhost:3001${data.path}`,
+          lastEdited: Date.now(),
+          params: {
+            brightness,
+            contrast,
+            saturation,
+            blur,
+            temperature
+          },
+          isOriginal: false
+        };
+
+        const newVersions = [...versions.slice(0, currentVersion + 1), newVersion];
+        setVersions(newVersions);
+        setCurrentVersion(newVersions.length - 1);
+        setCurrentImage(`http://localhost:3001${data.path}`);
+
+        setHasChange(false);
+      }
+    }
+    catch (error) {
+      console.error('Ошибка: ', error);
+    }
+  }
+  
 
   async function fileUpload (e) {
     const file = e.target.files[0];
-
     if(!file) return;
 
     const formData = new FormData();
@@ -27,10 +353,23 @@ function App() {
     });
 
     const data = await res.json();
-    console.log('Успех:', data);
+    console.log('Загружен файл: ', data);
 
+    const firstVersion = {
+      path: `http://localhost:3001${data.file.path}`,
+      timestamp: Date.now(),
+      name: file.name,
+      isOriginal: true
+    }
+
+    setImageId(data.file.id || Date.now().toString());
+    setOriginalImg(`http://localhost:3001${data.file.path}`);
     setCurrentImage(`http://localhost:3001${data.file.path}`);
+    setVersions([firstVersion]);
+    setCurrentVersion(0);
 
+    setHasChange(false)
+    //Получение размера изображения
     const img = new Image();
     img.onload = () => {
       setImageSize({width: img.width, height: img.height});
@@ -38,13 +377,17 @@ function App() {
     img.src = `http://localhost:3001${data.file.path}`;
   }
 
-  function openModal() {
-    if (!currentImage) {
+  async function openModal() {
+    if (!originalImg) {
       alert('Сначала загрузите изображение');
       return;
     }
 
-    setModalName(`image_${Date.now()}`);
+    if (currentImage && (brightness !== 0 || contrast !== 0 || saturation !== 0 || blur !== 0 || temperature !== 0)) {
+      await applyFilter();
+    }
+
+    setModalName(`save_${Date.now()}`);
     setModalWidth(imageSize.width);
     setModalHeight(imageSize.height);
 
@@ -63,27 +406,52 @@ function App() {
       name: modalName,
       format: modalFormat,
       width: modalWidth,
-      height: modalHeight
+      height: modalHeight,
+      params: {
+        brightness,
+        contrast,
+        saturation,
+        blur,
+        temperature
+      }
     };
     console.log('Сохраняем:', save);
 
     try {
       const res = await fetch('http://localhost:3001/file/save', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(save)
       });
 
-      const data = await res.json();
-      console.log('Ответ сервера', data);
-
       if (res.ok) {
-        alert('Изображение сохранено');
+        alert('Изображение сохранено на сервере');
+
+        const conf = window.confirm('Хотите загрузить изображение на компьютер?')
+        if (conf) {
+          setVersions([]);
+          setCurrentImage(null);
+          setCurrentVersion(-1);
+
+          const blob = await res.blob();
+
+          const url = window.URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.href = url;
+          link.download = modalName + '.' + modalFormat.toLowerCase();
+          
+          document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+
+          window.URL.revokeObjectURL(url);
+          alert('Изображение загружено на компьютер');
+        }
       }
       else {
-        alert('Ошибка', data.message);
+        const error = await res.json();
+            console.error('Ошибка сервера:', error);
+            alert('Ошибка: ' + error.message);
       }
     }
 
@@ -141,23 +509,23 @@ function App() {
           <p>{imageSize.width}px × {imageSize.height}px | - 0% +</p>
 
           <div className="ReturnButtons">
-            <a><div>
+            <div onClick={resetChanges}>
               <svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" fill="none" viewBox="0 0 128 128" id="refresh">
                 <path stroke="#000" strokeLinecap="round" strokeWidth="5" d="M26 64.5C26 43.237 43.237 26 64.5 26 76.4556 26 87.1383 31.4495 94.1999 40M102.979 64.5C102.979 85.763 85.742 103 64.479 103 52.5234 103 41.8407 97.5505 34.7791 89M25.0846 97.0845V81.4154C25.0846 78.9301 27.0993 76.9154 29.5846 76.9154L44.9152 76.9154M104 32V47.6691C104 50.1544 101.985 52.1691 99.4999 52.1691L84.1692 52.1691"></path>
               </svg>
-            </div></a>
-            <a><div>                         
+            </div>
+            <div onClick={goPrev}>                         
               <svg width="100%" height="100%" viewBox="-0.5 0 25 25" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <path d="M10.2741 11.725L6.54411 7.93501C6.35411 7.74501 6.35411 7.42501 6.54411 7.23501L10.2741 3.44501" stroke="#0F0F0F" strokeMiterlimit="10" strokeLinecap="round" strokeLinejoin="round"/>
                 <path d="M11.9241 21.555C15.7141 20.815 18.1941 17.095 17.4741 13.235C16.7541 9.37501 13.0941 6.84501 9.30408 7.58501" stroke="#0F0F0F" strokeMiterlimit="10" strokeLinecap="round" strokeLinejoin="round"/>
               </svg>
-            </div></a>
-            <a><div>                             
+            </div>
+            <div onClick={goNext}>                             
               <svg width="100%" height="100%" viewBox="-0.5 0 25 25" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <path d="M13.726 11.735L17.456 7.945C17.646 7.755 17.646 7.435 17.456 7.245L13.726 3.435" stroke="#0F0F0F" strokeMiterlimit="10" strokeLinecap="round" strokeLinejoin="round"/>
                 <path d="M12.0759 21.565C8.28595 20.825 5.80595 17.105 6.52595 13.245C7.24595 9.38501 10.9059 6.855 14.6959 7.595" stroke="#0F0F0F" strokeMiterlimit="10" strokeLinecap="round" strokeLinejoin="round"/>
               </svg>
-            </div></a>
+            </div>
           </div>
         </div>
 
@@ -252,34 +620,14 @@ function App() {
                   <button className="Btn-select" onClick={() => document.getElementById('fileInput').click()} >Выбрать файл</button>
                 </div>
               ) : (
-                <img src={currentImage} alt="edit" />
+                <div>
+                <img src={originalImg} style={preview()} />
+                {hasChange && (<button onClick={applyFilter} className="Apply-btn">Применить изменения</button>)}
+                </div>
               )}
             </div>
 
-            <div className="Tools">
-              <div className={activeTool === 'cropTool' ? 'active' : ''} onClick={() => setActiveTool('cropTool')}>                      
-                <svg width="50px" height="50px" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" strokeWidth="3" stroke="currentColor" fill="none"><path d="M6.81,17.68H44.63a1,1,0,0,1,1,1v39"/><path d="M57.19,46.32H18.37a1,1,0,0,1-1-1v-39"/></svg>
-              </div>
-
-              <div className={activeTool === 'rotateTool' ? 'active' : ''} onClick={() => setActiveTool('rotateTool')}>                              
-                <svg width="50px" height="50px" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M16 7V10M16 10H13M16 10C14.9173 9.23345 13.9223 8.23101 12.5576 8.03902C11.6988 7.91819 10.824 8.07974 10.0649 8.4993C9.3059 8.91887 8.7038 9.57374 8.34934 10.3652C7.99489 11.1567 7.90728 12.042 8.09972 12.8876C8.29217 13.7332 8.75424 14.4933 9.41631 15.0535M15.7733 13.3292C15.4851 14.1471 14.9388 14.8493 14.2169 15.3298C13.4949 15.8103 12.6363 16.0432 11.7704 15.9934M4 6V4H20V20H4V10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                </svg>
-              </div>
-
-              <div className={activeTool === 'flipHorizontal' ? 'active' : ''} onClick={() => setActiveTool('flipHorizontal')}>                     
-                <svg width="45px" height="45px" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
-                  <path fillRule="evenodd" clipRule="evenodd" d="M15.079 3.46209C15.3762 3.17355 15.851 3.18054 16.1396 3.47771L19.538 6.9777C19.8205 7.26871 19.8205 7.73162 19.538 8.02263L16.1396 11.5226C15.851 11.8198 15.3762 11.8268 15.079 11.5382C14.7819 11.2497 14.7749 10.7749 15.0634 10.4777L17.2263 8.25015L4.99989 8.25015C4.58567 8.25015 4.24989 7.91437 4.24989 7.50015C4.24989 7.08594 4.58567 6.75015 4.99989 6.75015L17.2263 6.75015L15.0634 4.52264C14.7749 4.22546 14.7819 3.75064 15.079 3.46209ZM8.92071 12.4618C9.21788 12.7504 9.22488 13.2252 8.93633 13.5224L6.77327 15.7501L18.9999 15.7501C19.4141 15.7501 19.7499 16.0859 19.7499 16.5001C19.7499 16.9143 19.4141 17.2501 18.9999 17.2501L6.77366 17.2501L8.93633 19.4774C9.22488 19.7746 9.21788 20.2494 8.92071 20.538C8.62353 20.8265 8.14871 20.8195 7.86016 20.5224L4.46177 17.0224C4.17922 16.7314 4.17922 16.2685 4.46177 15.9774L7.86016 12.4775C8.14871 12.1803 8.62353 12.1733 8.92071 12.4618Z"/>
-                </svg>
-              </div>
-
-              <div className={activeTool === 'flipVertical' ? 'active' : ''} onClick={() => setActiveTool('flipVertical')}>                    
-                <svg width="45px" height="45px" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
-                  <path fillRule="evenodd" clipRule="evenodd" d="M7.49976 4.25001C7.91398 4.25001 8.24976 4.5858 8.24976 5.00001L8.24976 17.2266L10.4775 15.0636C10.7747 14.775 11.2495 14.782 11.538 15.0792C11.8266 15.3763 11.8196 15.8512 11.5224 16.1397L8.02243 19.5381C7.73142 19.8207 7.26851 19.8207 6.9775 19.5381L3.47751 16.1397C3.18034 15.8512 3.17335 15.3763 3.4619 15.0792C3.75044 14.782 4.22527 14.775 4.52244 15.0636L6.74976 17.2262L6.74976 5.00001C6.74976 4.5858 7.08555 4.25001 7.49976 4.25001Z"/>
-                  <path fillRule="evenodd" clipRule="evenodd" d="M15.9773 4.4619C16.2683 4.17934 16.7312 4.17934 17.0222 4.4619L20.5222 7.86029C20.8193 8.14884 20.8263 8.62366 20.5378 8.92083C20.2492 9.21801 19.7744 9.225 19.4772 8.93645L17.2497 6.7736L17.2497 19C17.2497 19.4142 16.9139 19.75 16.4997 19.75C16.0855 19.75 15.7497 19.4142 15.7497 19L15.7497 6.77358L13.5222 8.93645C13.225 9.225 12.7502 9.21801 12.4616 8.92083C12.1731 8.62366 12.1801 8.14884 12.4773 7.86029L15.9773 4.4619Z"/>
-                </svg>
-              </div>
-            </div>
+            {tools()}
           </div>
         </div>
       </div>

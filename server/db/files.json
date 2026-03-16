@@ -1,11 +1,88 @@
 {
-  "files": [
+  "images": [
     {
-      "filename": "75495ef18f993e21424c9a07dde68209",
-      "originalName": "4f6962472030157384feadf6fa5b89cd.jpg",
-      "size": 23480,
-      "path": "/uploads/75495ef18f993e21424c9a07dde68209",
-      "date": "2026-03-09T17:49:00.117Z"
+      "id": "1773654813087",
+      "originalName": "556795fc583bfa23107278904515f0d8.jpg",
+      "originalPath": "/uploads/5e973ca23d9eba2f28efe951e49dc5d7",
+      "currentPath": "/processed/1773654813087_v3.jpg",
+      "size": 92799,
+      "uploadDate": "2026-03-16T09:53:33.087Z",
+      "versions": [
+        {
+          "path": "/uploads/5e973ca23d9eba2f28efe951e49dc5d7",
+          "atEdited": 1773654813087,
+          "action": {
+            "type": "upload"
+          }
+        },
+        {
+          "path": "/processed/1773654813087_v1.jpg",
+          "params": {
+            "brightness": "0",
+            "contrast": "15",
+            "saturation": "100",
+            "blur": "0",
+            "temperature": "0"
+          }
+        },
+        {
+          "path": "/processed/1773654813087_v2.jpg",
+          "params": {
+            "brightness": "0",
+            "contrast": "15",
+            "saturation": "100",
+            "blur": "0",
+            "temperature": "0"
+          }
+        },
+        {
+          "path": "/processed/1773654813087_v3.jpg",
+          "params": {
+            "brightness": "0",
+            "contrast": "15",
+            "saturation": "100",
+            "blur": "0",
+            "temperature": "0"
+          }
+        }
+      ]
+    },
+    {
+      "id": "1773655418918",
+      "originalName": "fe1cfa05345b8040abd4a3a571cb5dac.jpg",
+      "originalPath": "/uploads/b2cb08fda7a58a96778a667c64c39e47",
+      "currentPath": "/processed/1773655418918_v2.jpg",
+      "size": 30498,
+      "uploadDate": "2026-03-16T10:03:38.918Z",
+      "versions": [
+        {
+          "path": "/uploads/b2cb08fda7a58a96778a667c64c39e47",
+          "atEdited": 1773655418918,
+          "action": {
+            "type": "upload"
+          }
+        },
+        {
+          "path": "/processed/1773655418918_v1.jpg",
+          "params": {
+            "brightness": "0",
+            "contrast": "29",
+            "saturation": "30",
+            "blur": "0",
+            "temperature": "0"
+          }
+        },
+        {
+          "path": "/processed/1773655418918_v2.jpg",
+          "params": {
+            "brightness": "0",
+            "contrast": "100",
+            "saturation": "30",
+            "blur": "0",
+            "temperature": "0"
+          }
+        }
+      ]
     }
   ]
 }

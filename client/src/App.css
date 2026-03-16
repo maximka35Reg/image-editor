@@ -97,6 +97,7 @@ body {
     display: flex;
     justify-content: center;
     align-items: center;
+    cursor: pointer;
 }
 
 .overlay {
@@ -386,10 +387,8 @@ body {
     overflow-y: hidden;
     border-radius: 8px;
     color: #555;
-}
-
-.Tools div {
-    padding: 8px;
+    width: 100%;
+    margin: 0 auto;
 }
 
 .Tools div.active {
@@ -398,3 +397,78 @@ body {
   border-radius: 15px;
 }
 
+
+.Tools div {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px;
+    cursor: pointer;
+}
+
+.Tools div label {
+    font-size: 1.1em;
+    font-weight: 500;
+    margin-bottom: 3px;
+}
+
+.Tools div span {
+    font-size: 0.9em;
+}
+
+.Tools div input {
+    border-radius: 5px;
+    border: 1px solid #999;
+    outline: none;
+    padding: 8px 12px;
+    font-size: 1em;
+    transition: all 0.3s ease;
+}
+
+.Tools div input:hover {
+    border-color: #333;
+}
+
+.Tools div input:focus {
+    border-color: #7d32d3;
+}
+ .Tools .lock {
+    margin-top: 5px;
+ }
+
+.Tools .default {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    border-radius: 50%;
+    background-color: #e3dfff;
+    width: 45px;
+    height: 45px;
+    cursor: pointer;
+}
+
+.Tools-parameters {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+}
+
+.width, .height {
+    flex-direction: column;
+}
+
+.range {
+    background-color: #f5f5f5;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    padding: 12px 40px;
+    border-radius: 8px;
+    width: 100%;
+}
+#range-line {
+    cursor: pointer;
+}

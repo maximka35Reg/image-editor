@@ -2,6 +2,10 @@
 
 /build
 
+/uploads
+/processed
+/saved
+
 *.log
 .DS_Store
 .env
