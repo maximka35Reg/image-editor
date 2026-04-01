@@ -99,52 +99,93 @@ router.get('/view', async(req, res) => {
 // .../file/filters 
 router.post('/filters', upload.single('image'), async(req, res) => {
     try {
+        const imagePath = req.file.path;
+
         const imageId = req.body.imageId;
         const version = req.body.version;
 
-        const brightness = req.body.brightness;
-        const contrast = req.body.contrast;
-        const blur = req.body.blur;
-        const temperature = req.body.temperature;
-        const saturation = req.body.saturation;
+        const brightness = Number(req.body.brightness) || 0;
+        const contrast = Number(req.body.contrast) || 0;
+        const saturation = Number(req.body.saturation) || 0;
+        const blur = Number(req.body.blur) || 0;
+        const hue = Number(req.body.hue) || 0;
+        const invert = Number(req.body.invert) || 0;
+        const sepia = Number(req.body.sepia) || 0;
+        const turn = Number(req.body.turn) || 0;
+        const flipHorizontal = req.body.flipHorizontal === '1';
+        const flipVertical = req.body.flipVertical === '1';
+        const width = Number(req.body.width);
+        const height = Number(req.body.height);
 
-        const imagePath = req.file.path;
+        let changedImg = sharp(imagePath);
+
+        // Сначала обрезка, если есть
+        if (req.body.cropX !== undefined && req.body.cropY !== undefined && req.body.cropWidth && req.body.cropHeight) {
+            const cropX = Math.max(0, Math.round(Number(req.body.cropX)));
+            const cropY = Math.max(0, Math.round(Number(req.body.cropY)));
+            const cropWidth = Math.max(1, Math.round(Number(req.body.cropWidth)));
+            const cropHeight = Math.max(1, Math.round(Number(req.body.cropHeight)));
+            
+            changedImg = changedImg.extract({ left: cropX, top: cropY, width: cropWidth, height: cropHeight });
+        }
+
+        if (invert === 1) {
+    changedImg = changedImg.negate({ alpha: false });
+}
+
+// Градации серого (если saturation = -100)
+if (saturation === -100) {
+    changedImg = changedImg.grayscale();
+}
+
+// Яркость, насыщенность, оттенок
+if (brightness !== 0 || saturation !== 0 || hue !== 0) {
+    changedImg = changedImg.modulate({
+        brightness: 1 + (brightness / 100),
+        saturation: 1 + (saturation / 100),
+        hue: hue
+    });
+}
+
+// Контраст
+if (contrast !== 0) {
+    const contrastVal = 1 + (contrast / 100);
+    changedImg = changedImg.linear(contrastVal, -128 * (contrastVal - 1));
+}
+
+// Размытие
+if (blur > 0) {
+    changedImg = changedImg.blur(blur);
+}
+
+// Сепия
+if (sepia > 0) {
+    const s = sepia / 100;
+    const matrix = [
+        [0.393 + 0.607 * (1 - s), 0.769 - 0.769 * (1 - s), 0.189 - 0.189 * (1 - s)],
+        [0.349 - 0.349 * (1 - s), 0.686 + 0.314 * (1 - s), 0.168 - 0.168 * (1 - s)],
+        [0.272 - 0.272 * (1 - s), 0.534 - 0.534 * (1 - s), 0.131 + 0.869 * (1 - s)]
+    ];
+    changedImg = changedImg.recomb(matrix);
+}
+
+        // Потом изменение размера
+        if (width && height && width > 0 && height > 0) {
+            changedImg = changedImg.resize(width, height, { fit: 'fill' });
+        }
+
+        // Наконец поворот и отражения
+         if (turn !== 0) {
+            changedImg = changedImg.rotate(turn);
+        }
+
+        if (flipHorizontal) changedImg = changedImg.flop();
+        if (flipVertical) changedImg = changedImg.flip();
+
     
         const newVersion = Number(version) + 1;
         const filename = `${imageId}_v${newVersion}.jpg`;
         const uploadPath = path.join(__dirname, '../processed', filename);
-
-        let changedImg = sharp(imagePath);
-
-        if (brightness !== undefined || saturation !== undefined) {
-            const brightnessVal = 1 + (Number(brightness) / 100);
-            const saturationVal = 1 + (Number(saturation) / 100);
-            changedImg = changedImg.modulate({ brightness: brightnessVal, saturation: saturationVal })
-        }
-
-
-        if (Number(contrast) !== 0 && contrast !== undefined) {
-            const contrastVal = 1 + (Number(contrast) / 100);
-            changedImg = changedImg.linear(contrastVal, 0);
-        }
-
-        if (blur !== undefined && Number(blur) > 0) {
-            changedImg = changedImg.blur(Number(blur));
-        }
-
-        if (temperature !== undefined && Number(temperature) !== 0) {
-            const temp = Number(temperature);
-            let tempVal;
-            if (temp < 0) {
-                const cold = Math.abs(temp) / 100;
-                tempVal = { r: 255, g: 255, b: Math.round(255 - (cold * 100)) };
-            }
-            else {
-                const heat = temp / 100;
-                tempVal = { r: 255, g: Math.round(255 - (heat * 50)), b: Math.round(255 - (heat * 100)) };
-            }
-            changedImg = changedImg.tint(tempVal);
-        }
 
         await changedImg.toFile(uploadPath);
 
@@ -162,8 +203,7 @@ router.post('/filters', upload.single('image'), async(req, res) => {
             img = {
                 id: imageId,
                 defaultPath: `/uploads/${path.basename(imagePath)}`,
-                versions: [],
-                history: []
+                versions: []
             };
             db.images.push(img);
         }
@@ -173,13 +213,19 @@ router.post('/filters', upload.single('image'), async(req, res) => {
         if (!versionExists) 
             img.versions.push({
                 path: `/processed/${filename}`,
-                atEdited: req.body.lastEdited,
                 params: {
                     brightness: brightness,
                     contrast: contrast,
                     saturation: saturation,
                     blur: blur,
-                    temperature: temperature
+                    hue: hue,
+                    invert: invert,
+                    sepia: sepia,
+                    width: width || null,
+                    height: height || null,
+                    turn: turn,                    // ← добавить
+                    flipHorizontal: flipHorizontal,          // ← добавить
+                    flipVertical: flipVertical
                 }
             });
 
@@ -188,14 +234,45 @@ router.post('/filters', upload.single('image'), async(req, res) => {
 
         fs.writeFileSync(dbPath, JSON.stringify(db, null, 2));
 
-        res.json({
-            message: 'Параметры применены',
-            path: `/processed/${filename}`
-        });
+        res.json({ path: `/processed/${filename}` });
     }
     catch (error) {
         console.log('Ошибка:', error);
         return res.status(500).json({ message: 'Ошибка при изменении параметров изображения' });
+    }
+});
+
+router.post('/crop', upload.single('image'), async (req, res) => {
+    try {
+       const { cropX, cropY, cropWidth, cropHeight } = req.body;
+        
+        console.log('Сервер получил:', { cropX, cropY, cropWidth, cropHeight });
+        
+        if (cropX === undefined || cropY === undefined || cropWidth === undefined || cropHeight === undefined) {
+            return res.status(400).json({ message: 'Не все параметры' });
+        }
+
+        const imagePath = req.file.path;
+        
+        // Проверяем, что координаты не отрицательные
+        const left = Math.max(0, Math.round(Number(cropX)));
+        const top = Math.max(0, Math.round(Number(cropY)));
+        const width = Math.max(1, Math.round(Number(cropWidth)));
+        const height = Math.max(1, Math.round(Number(cropHeight)));
+        
+        console.log('После обработки:', { left, top, width, height });
+        
+        const filename = `cropped_${Date.now()}.jpg`;
+        const outputPath = path.join(__dirname, '../processed', filename);
+        
+        await sharp(imagePath)
+            .extract({ left, top, width, height })
+            .toFile(outputPath);
+        
+        res.json({ path: `/processed/${filename}` });
+    } catch (error) {
+        console.error('Ошибка обрезки:', error);
+        res.status(500).json({ message: 'Ошибка обрезки: ' + error.message });
     }
 });
 
@@ -235,47 +312,20 @@ router.post('/save', async (req, res) => {
         const savePath = path.join(processedPath, saveName);
 
         await sharp(uploadPath)
-        .resize(Number(width), Number(height), {fit: 'contain'}) //изменение размера
+        .resize(Number(width), Number(height), {  fit: 'fill' }) //изменение размера
         .toFormat(format.toLowerCase()) // конвертация в нужный формат
         .toFile(savePath); //сохранение на диск по выбранному пути
 
-        res.json({
-            message: 'Изображение сохранено',
-            file: {
-                path: `/saved/${saveName}`,
-            }
-        });
+        res.setHeader('Content-Type', `image/${format.toLowerCase()}`);
+        res.setHeader('Content-Disposition', `attachment; filename="${name}.${format.toLowerCase()}"`);
 
+        const fileStream = fs.createReadStream(savePath);
+        fileStream.pipe(res);
     }
     catch (error) {
         console.error('Ошибка сохранения: ', error);
         res.status(500).json({ message: 'Ошибка при сохранении изобажения'});
     }
 });
-/*
-// .../file/download
-router.get('/download', async (req, res) => {
-    try {
-    const {filename} = req.query;
-
-    if (!filename) {
-        return res.status(400).json({message: 'Не указан файл'});
-    }
-
-    const filepath = path.join(__dirname, '../saved', filename);
-
-    if (!fs.existsSync(filepath)) {
-        return res.status(404).json({ message: 'Файл не найден'});
-    }
-
-    res.download(filepath, filename);
-    }
-    catch (error) {
-        console.error('Ошибка скачивания: ', error);
-        return res.status(500).json({ message: 'Ошибка при скачивании файла' });
-    }
-});
-*/
-
 
 module.exports = router;
