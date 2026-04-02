@@ -232,6 +232,9 @@ if (data.path) {
     setSepia(0);
     setParamValue(0);
     setCurrentParam('brightness');
+    setTurn(0);
+setFlipHorizontal(false);
+setFlipVertical(false);
   };
 
   img.src = newPath; // 🔥 тоже новый путь
@@ -247,6 +250,7 @@ if (data.path) {
   const applyCrop = async () => {
     if (!crop.width || !crop.height || !imgRef.current) return;
     await applyFilter(width, height);
+    setIsCropping(false);
   };
 
   function selectParameter(param) {
@@ -447,25 +451,9 @@ if (data.path) {
     if (invert === 1) {
       filters += ` invert(100%)`;
     }
-            
-    let transforms = [];
-
-    if (turn !== 0) transforms.push(`rotate(${turn}deg)`);
-
-if (flipHorizontal && flipVertical) {
-    transforms.push('rotateX(180deg) rotateY(180deg)');
-  } else if (flipHorizontal) {
-    transforms.push('rotateY(180deg)');
-  } else if (flipVertical) {
-    transforms.push('rotateX(180deg)');
-  }
-
- 
-    const transform = transforms.length > 0 ? transforms.join(' ') : 'none';
-
+          
     return {
-      filter: filters,
-      transform: transform  
+      filter: filters
     }
   };
 
@@ -541,7 +529,16 @@ function goNext() {
       case 'crop':
         return (
           <div className="Tools">
-              <div className={activeTool === 'cropTool' ? 'active' : ''} onClick={() => { setIsCropping(true); setActiveTool('cropTool'); setPreviewMode(true); setHasChange(true); }}>                      
+              <div className={activeTool === 'cropTool' ? 'active' : ''} onClick={ async () => {
+  // если есть поворот или отражение — применяем их на сервере
+  if (turn !== 0 || flipHorizontal || flipVertical) {
+    await applyFilter(width, height);
+    setTurn(0);
+    setFlipHorizontal(false);
+    setFlipVertical(false);
+  }
+
+  setIsCropping(true);}}>                      
                 <svg width="35px" height="35px" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" strokeWidth="3" stroke="currentColor" fill="none"><path d="M6.81,17.68H44.63a1,1,0,0,1,1,1v39"/><path d="M57.19,46.32H18.37a1,1,0,0,1-1-1v-39"/></svg>
                 <span>Обрезка</span>
               </div>
@@ -554,10 +551,10 @@ function goNext() {
   </>
 )}
 
-              <div className={activeTool === 'rotateTool' ? 'active' : ''} onClick={() => { 
-    setTurn((turn + 90) % 360);
-    setPreviewMode(true);
-    setHasChange(true);
+              <div className={activeTool === 'rotateTool' ? 'active' : ''} onClick={async () => { 
+    const newTurn = (turn + 90) % 360;
+  setTurn(newTurn);
+  setHasChange(true);
 }}>                              
                 <svg width="35px" height="35px" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                   <path d="M16 7V10M16 10H13M16 10C14.9173 9.23345 13.9223 8.23101 12.5576 8.03902C11.6988 7.91819 10.824 8.07974 10.0649 8.4993C9.3059 8.91887 8.7038 9.57374 8.34934 10.3652C7.99489 11.1567 7.90728 12.042 8.09972 12.8876C8.29217 13.7332 8.75424 14.4933 9.41631 15.0535M15.7733 13.3292C15.4851 14.1471 14.9388 14.8493 14.2169 15.3298C13.4949 15.8103 12.6363 16.0432 11.7704 15.9934M4 6V4H20V20H4V10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
@@ -565,14 +562,21 @@ function goNext() {
                 <span>Поворот 90°</span>
               </div>
 
-              <div className={activeTool === 'flipHorizontal' ? 'active' : ''} onClick={() => { setFlipHorizontal(!flipHorizontal); setPreviewMode(true); setHasChange(true); }}>                     
+              <div className={activeTool === 'flipHorizontal' ? 'active' : ''} onClick={async () => {
+  const newVal = !flipHorizontal;
+  setFlipHorizontal(newVal);
+  setHasChange(true);}}>                     
                 <svg width="35px" height="35px" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
                   <path fillRule="evenodd" clipRule="evenodd" d="M15.079 3.46209C15.3762 3.17355 15.851 3.18054 16.1396 3.47771L19.538 6.9777C19.8205 7.26871 19.8205 7.73162 19.538 8.02263L16.1396 11.5226C15.851 11.8198 15.3762 11.8268 15.079 11.5382C14.7819 11.2497 14.7749 10.7749 15.0634 10.4777L17.2263 8.25015L4.99989 8.25015C4.58567 8.25015 4.24989 7.91437 4.24989 7.50015C4.24989 7.08594 4.58567 6.75015 4.99989 6.75015L17.2263 6.75015L15.0634 4.52264C14.7749 4.22546 14.7819 3.75064 15.079 3.46209ZM8.92071 12.4618C9.21788 12.7504 9.22488 13.2252 8.93633 13.5224L6.77327 15.7501L18.9999 15.7501C19.4141 15.7501 19.7499 16.0859 19.7499 16.5001C19.7499 16.9143 19.4141 17.2501 18.9999 17.2501L6.77366 17.2501L8.93633 19.4774C9.22488 19.7746 9.21788 20.2494 8.92071 20.538C8.62353 20.8265 8.14871 20.8195 7.86016 20.5224L4.46177 17.0224C4.17922 16.7314 4.17922 16.2685 4.46177 15.9774L7.86016 12.4775C8.14871 12.1803 8.62353 12.1733 8.92071 12.4618Z"/>
                 </svg>
                 <span>Горизонтальное отражение</span>
               </div>
 
-              <div className={activeTool === 'flipVertical' ? 'active' : ''} onClick={() => { setFlipVertical(!flipVertical); setPreviewMode(true); setHasChange(true); }}>                    
+              <div className={activeTool === 'flipVertical' ? 'active' : ''} onClick={async () => {
+  const newVal = !flipVertical;
+  setFlipVertical(newVal);
+  setHasChange(true);
+}}>                    
                 <svg width="35px" height="35px" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
                   <path fillRule="evenodd" clipRule="evenodd" d="M7.49976 4.25001C7.91398 4.25001 8.24976 4.5858 8.24976 5.00001L8.24976 17.2266L10.4775 15.0636C10.7747 14.775 11.2495 14.782 11.538 15.0792C11.8266 15.3763 11.8196 15.8512 11.5224 16.1397L8.02243 19.5381C7.73142 19.8207 7.26851 19.8207 6.9775 19.5381L3.47751 16.1397C3.18034 15.8512 3.17335 15.3763 3.4619 15.0792C3.75044 14.782 4.22527 14.775 4.52244 15.0636L6.74976 17.2262L6.74976 5.00001C6.74976 4.5858 7.08555 4.25001 7.49976 4.25001Z"/>
                   <path fillRule="evenodd" clipRule="evenodd" d="M15.9773 4.4619C16.2683 4.17934 16.7312 4.17934 17.0222 4.4619L20.5222 7.86029C20.8193 8.14884 20.8263 8.62366 20.5378 8.92083C20.2492 9.21801 19.7744 9.225 19.4772 8.93645L17.2497 6.7736L17.2497 19C17.2497 19.4142 16.9139 19.75 16.4997 19.75C16.0855 19.75 15.7497 19.4142 15.7497 19L15.7497 6.77358L13.5222 8.93645C13.225 9.225 12.7502 9.21801 12.4616 8.92083C12.1731 8.62366 12.1801 8.14884 12.4773 7.86029L15.9773 4.4619Z"/>
@@ -716,8 +720,9 @@ function goNext() {
   }
 
   async function saveImg() {
+    const cleanPath = currentImage.split('?')[0];
     const save = {
-      path: currentImage,
+      path: cleanPath,
       name: modalName,
       format: modalFormat,
       width: modalWidth,
@@ -959,10 +964,12 @@ function goNext() {
                 />
             </ReactCrop>
         ) : (
+          <div className="image-wrapper" style={previewMode ? preview() : {}}>
             <img 
                 src={currentImage} 
-                style={previewMode ? preview() : {}}
+                
             />
+            </div>
         )
               )}
             </div>
