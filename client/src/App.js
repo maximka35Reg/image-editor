@@ -152,10 +152,16 @@ useEffect(() => {
       formData.append('flipVertical', flipVertical ? 1 : 0);
       formData.append('turn', turn);
 
-      const safeWidth = targetWidth || width || imageSize.width;
-      const safeHeight = targetHeight || height || imageSize.height; 
-      formData.append('width', safeWidth);
-      formData.append('height', safeHeight);
+      let safeWidth = null;
+let safeHeight = null;
+
+if (width && height && (width !== imageSize.width || height !== imageSize.height)) {
+    safeWidth = targetWidth || width || imageSize.width;
+    safeHeight = targetHeight || height || imageSize.height;
+
+    formData.append('width', safeWidth);
+    formData.append('height', safeHeight);
+}
 
       if (isCropping && crop.width && crop.height && imgRef.current) {
         const img = imgRef.current;
@@ -213,7 +219,9 @@ if (data.path) {
 
   const img = new Image();
   img.onload = () => {
-    setImageSize({ width: img.width, height: img.height });
+     setImageSize({ width: img.width, height: img.height });
+    setWidth(img.width);
+    setHeight(img.height);
 
     setBrightness(0);
     setContrast(0);
@@ -442,21 +450,16 @@ if (data.path) {
             
     let transforms = [];
 
-    if (width > 0 && height > 0 && (width !== imageSize.width || height !== imageSize.height)) {
-      transforms.push(` scale(${width / imageSize.width}, ${height / imageSize.height})`);
-    }
+    if (turn !== 0) transforms.push(`rotate(${turn}deg)`);
 
-    if (turn !== 0) {
-      transforms.push(` rotate(${turn}deg)`);
-    }
+if (flipHorizontal && flipVertical) {
+    transforms.push('rotateX(180deg) rotateY(180deg)');
+  } else if (flipHorizontal) {
+    transforms.push('rotateY(180deg)');
+  } else if (flipVertical) {
+    transforms.push('rotateX(180deg)');
+  }
 
-    if (flipHorizontal && flipVertical) {
-        transforms.push(' rotateY(180deg) rotateX(180deg)');
-    } else if (flipHorizontal) {
-        transforms.push(' rotateY(180deg)');
-    } else if (flipVertical) {
-        transforms.push(' rotateX(180deg)');
-    }
  
     const transform = transforms.length > 0 ? transforms.join(' ') : 'none';
 

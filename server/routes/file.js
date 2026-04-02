@@ -117,48 +117,63 @@ router.post('/filters', upload.single('image'), async(req, res) => {
         const width = Number(req.body.width);
         const height = Number(req.body.height);
 
-        let changedImg = sharp(imagePath);
+       let changedImg = sharp(imagePath);
 
-        // Сначала обрезка, если есть
-        if (req.body.cropX !== undefined && req.body.cropY !== undefined && req.body.cropWidth && req.body.cropHeight) {
-            const cropX = Math.max(0, Math.round(Number(req.body.cropX)));
-            const cropY = Math.max(0, Math.round(Number(req.body.cropY)));
-            const cropWidth = Math.max(1, Math.round(Number(req.body.cropWidth)));
-            const cropHeight = Math.max(1, Math.round(Number(req.body.cropHeight)));
-            
-            changedImg = changedImg.extract({ left: cropX, top: cropY, width: cropWidth, height: cropHeight });
-        }
+// 1. CROP (если есть)
+if (
+    req.body.cropX !== undefined &&
+    req.body.cropY !== undefined &&
+    req.body.cropWidth &&
+    req.body.cropHeight
+) {
+    const cropX = Math.max(0, Math.round(Number(req.body.cropX)));
+    const cropY = Math.max(0, Math.round(Number(req.body.cropY)));
+    const cropWidth = Math.max(1, Math.round(Number(req.body.cropWidth)));
+    const cropHeight = Math.max(1, Math.round(Number(req.body.cropHeight)));
 
-        if (invert === 1) {
+    changedImg = changedImg.extract({
+        left: cropX,
+        top: cropY,
+        width: cropWidth,
+        height: cropHeight
+    });
+}
+
+// 2. ROTATE (до resize!)
+if (turn !== 0) {
+    changedImg = changedImg.rotate(turn);
+}
+
+// 3. FLIP (до фильтров)
+if (flipHorizontal) changedImg = changedImg.flop();
+if (flipVertical) changedImg = changedImg.flip();
+
+// 4. FILTERS
+if (invert === 1) {
     changedImg = changedImg.negate({ alpha: false });
 }
 
-// Градации серого (если saturation = -100)
 if (saturation === -100) {
     changedImg = changedImg.grayscale();
 }
 
-// Яркость, насыщенность, оттенок
 if (brightness !== 0 || saturation !== 0 || hue !== 0) {
     changedImg = changedImg.modulate({
-        brightness: 1 + (brightness / 100),
-        saturation: 1 + (saturation / 100),
+        brightness: 1 + brightness / 100,
+        saturation: 1 + saturation / 100,
         hue: hue
     });
 }
 
-// Контраст
 if (contrast !== 0) {
-    const contrastVal = 1 + (contrast / 100);
-    changedImg = changedImg.linear(contrastVal, -128 * (contrastVal - 1));
+    const c = 1 + contrast / 100;
+    changedImg = changedImg.linear(c, -128 * (c - 1));
 }
 
-// Размытие
 if (blur > 0) {
     changedImg = changedImg.blur(blur);
 }
 
-// Сепия
 if (sepia > 0) {
     const s = sepia / 100;
     const matrix = [
@@ -169,18 +184,12 @@ if (sepia > 0) {
     changedImg = changedImg.recomb(matrix);
 }
 
-        // Потом изменение размера
-        if (width && height && width > 0 && height > 0) {
-            changedImg = changedImg.resize(width, height, { fit: 'fill' });
-        }
+// 5. RESIZE (всегда последним!)
+if (width && height && width > 0 && height > 0) {
+    changedImg = changedImg.resize(width, height, { fit: 'fill' });
+}
 
-        // Наконец поворот и отражения
-         if (turn !== 0) {
-            changedImg = changedImg.rotate(turn);
-        }
 
-        if (flipHorizontal) changedImg = changedImg.flop();
-        if (flipVertical) changedImg = changedImg.flip();
 
     
         const newVersion = Number(version) + 1;
