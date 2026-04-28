@@ -19,6 +19,8 @@ function App() {
 
   const [hasChange, setHasChange] = useState(false);
   const [previewMode, setPreviewMode] = useState(false);
+  const [mode, setMode] = useState(null);
+
 
   const [active, setActive] = useState('crop');
   const [activeTool, setActiveTool] = useState('cropTool');
@@ -51,9 +53,8 @@ function App() {
   const [modalOpen, setModalOpen] = useState(false);
   const [modalName, setModalName] = useState('');
   const [modalFormat, setModalFormat] = useState('JPEG');
-  const [modalWidth, setModalWidth] = useState(0);
-  const [modalHeight, setModalHeight] = useState(0);
   const [modalLock, setModalLock] = useState(true);
+
 
   const imgRef = useRef(null);
   useEffect(() => {
@@ -119,8 +120,6 @@ useEffect(() => {
       setOriginalSize({ width: img.width, height: img.height });
       setWidth(img.width);
       setHeight(img.height);
-      setModalWidth(img.width);
-      setModalHeight(img.height);
       setPreviewMode(false);
 
       resetParams(img.width, img.height);
@@ -129,7 +128,7 @@ useEffect(() => {
   }
   
 
-    async function applyFilter(targetWidth = width, targetHeight = height) {
+    async function applyFilter(targetWidth = width, targetHeight = height, type = mode) {
     if (!currentImage || !imageId) return;
 
     try {
@@ -219,9 +218,14 @@ if (data.path) {
 
   const img = new Image();
   img.onload = () => {
-     setImageSize({ width: img.width, height: img.height });
-    setWidth(img.width);
-    setHeight(img.height);
+     
+  const w = img.naturalWidth;
+  const h = img.naturalHeight;
+
+  setWidth(w);
+  setHeight(h);
+  setImageSize({ width: w, height: h });
+
 
     setBrightness(0);
     setContrast(0);
@@ -235,6 +239,9 @@ if (data.path) {
     setTurn(0);
 setFlipHorizontal(false);
 setFlipVertical(false);
+setMode(null);
+    setHasChange(false);
+    setSizeChanges(false);
   };
 
   img.src = newPath; // 🔥 тоже новый путь
@@ -249,7 +256,7 @@ setFlipVertical(false);
 
   const applyCrop = async () => {
     if (!crop.width || !crop.height || !imgRef.current) return;
-    await applyFilter(width, height);
+    await applyFilter(width, height, mode);
     setIsCropping(false);
   };
 
@@ -397,14 +404,6 @@ setFlipVertical(false);
     setHasChange(true);
 }
 
-  function defaultSize() {
-    setWidth(originalSize.width);
-    setHeight(originalSize.height);
-    setSizeChanges(false);
-    setPreviewMode(true);
-    applyFilter(originalSize.width, originalSize.height);
-  }
-
    function toolChangeWidth (e) {
     const newW = Number(e.target.value);
     setWidth(newW);
@@ -433,28 +432,35 @@ setFlipVertical(false);
 
 
   function preview() {
+ const canvasWidth = window.innerWidth * 0.6;   // 60%
+  const canvasHeight = window.innerHeight * 0.8; // 80vh
+
+  const scaleW = canvasWidth / width;
+  const scaleH = canvasHeight / height;
+
+  const scale = Math.min(scaleW, scaleH, 1);
+
     let filters = `
       brightness(${1 + brightness/100})
       contrast(${1 + contrast/100})
       saturate(${1 + saturation/100})
       ${blur> 0 ? `blur(${blur}px)` : ''}
+      ${hue !== 0 ? ` hue-rotate(${hue}deg)` : ''}
+    ${sepia > 0 ? ` sepia(${sepia}%)` : ''}
+    ${invert === 1 ? ` invert(100%)` : ''}
     `;
     
-    if (hue !== 0) {
-      filters += ` hue-rotate(${hue}deg)`;
-    }
-    
-    if (sepia > 0) {
-      filters += ` sepia(${sepia}%)`;
-    }
-    
-    if (invert === 1) {
-      filters += ` invert(100%)`;
-    }
-          
     return {
-      filter: filters
-    }
+    filter: filters,
+    width: width + "px",
+    height: height + "px",
+    transform: `translate(-50%, -50%)
+  rotate(${turn}deg)
+  scaleX(${flipHorizontal ? -1 : 1})
+  scaleY(${flipVertical ? -1 : 1})
+  scale(${scale})`,
+    transformOrigin: "center center",
+  };
   };
 
 
@@ -530,9 +536,9 @@ function goNext() {
         return (
           <div className="Tools">
               <div className={activeTool === 'cropTool' ? 'active' : ''} onClick={ async () => {
-  // если есть поворот или отражение — применяем их на сервере
+  setMode("crop");// если есть поворот или отражение — применяем их на сервере
   if (turn !== 0 || flipHorizontal || flipVertical) {
-    await applyFilter(width, height);
+    await applyFilter(width, height, mode);
     setTurn(0);
     setFlipHorizontal(false);
     setFlipVertical(false);
@@ -554,7 +560,9 @@ function goNext() {
               <div className={activeTool === 'rotateTool' ? 'active' : ''} onClick={async () => { 
     const newTurn = (turn + 90) % 360;
   setTurn(newTurn);
+  setMode("rotate");
   setHasChange(true);
+  setPreviewMode(true);
 }}>                              
                 <svg width="35px" height="35px" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                   <path d="M16 7V10M16 10H13M16 10C14.9173 9.23345 13.9223 8.23101 12.5576 8.03902C11.6988 7.91819 10.824 8.07974 10.0649 8.4993C9.3059 8.91887 8.7038 9.57374 8.34934 10.3652C7.99489 11.1567 7.90728 12.042 8.09972 12.8876C8.29217 13.7332 8.75424 14.4933 9.41631 15.0535M15.7733 13.3292C15.4851 14.1471 14.9388 14.8493 14.2169 15.3298C13.4949 15.8103 12.6363 16.0432 11.7704 15.9934M4 6V4H20V20H4V10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
@@ -565,7 +573,9 @@ function goNext() {
               <div className={activeTool === 'flipHorizontal' ? 'active' : ''} onClick={async () => {
   const newVal = !flipHorizontal;
   setFlipHorizontal(newVal);
-  setHasChange(true);}}>                     
+  setMode("flip");
+  setHasChange(true);
+  setPreviewMode(true);}}>                     
                 <svg width="35px" height="35px" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
                   <path fillRule="evenodd" clipRule="evenodd" d="M15.079 3.46209C15.3762 3.17355 15.851 3.18054 16.1396 3.47771L19.538 6.9777C19.8205 7.26871 19.8205 7.73162 19.538 8.02263L16.1396 11.5226C15.851 11.8198 15.3762 11.8268 15.079 11.5382C14.7819 11.2497 14.7749 10.7749 15.0634 10.4777L17.2263 8.25015L4.99989 8.25015C4.58567 8.25015 4.24989 7.91437 4.24989 7.50015C4.24989 7.08594 4.58567 6.75015 4.99989 6.75015L17.2263 6.75015L15.0634 4.52264C14.7749 4.22546 14.7819 3.75064 15.079 3.46209ZM8.92071 12.4618C9.21788 12.7504 9.22488 13.2252 8.93633 13.5224L6.77327 15.7501L18.9999 15.7501C19.4141 15.7501 19.7499 16.0859 19.7499 16.5001C19.7499 16.9143 19.4141 17.2501 18.9999 17.2501L6.77366 17.2501L8.93633 19.4774C9.22488 19.7746 9.21788 20.2494 8.92071 20.538C8.62353 20.8265 8.14871 20.8195 7.86016 20.5224L4.46177 17.0224C4.17922 16.7314 4.17922 16.2685 4.46177 15.9774L7.86016 12.4775C8.14871 12.1803 8.62353 12.1733 8.92071 12.4618Z"/>
                 </svg>
@@ -574,8 +584,10 @@ function goNext() {
 
               <div className={activeTool === 'flipVertical' ? 'active' : ''} onClick={async () => {
   const newVal = !flipVertical;
+  setMode("flip");
   setFlipVertical(newVal);
   setHasChange(true);
+  setPreviewMode(true);
 }}>                    
                 <svg width="35px" height="35px" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
                   <path fillRule="evenodd" clipRule="evenodd" d="M7.49976 4.25001C7.91398 4.25001 8.24976 4.5858 8.24976 5.00001L8.24976 17.2266L10.4775 15.0636C10.7747 14.775 11.2495 14.782 11.538 15.0792C11.8266 15.3763 11.8196 15.8512 11.5224 16.1397L8.02243 19.5381C7.73142 19.8207 7.26851 19.8207 6.9775 19.5381L3.47751 16.1397C3.18034 15.8512 3.17335 15.3763 3.4619 15.0792C3.75044 14.782 4.22527 14.775 4.52244 15.0636L6.74976 17.2262L6.74976 5.00001C6.74976 4.5858 7.08555 4.25001 7.49976 4.25001Z"/>
@@ -673,13 +685,7 @@ function goNext() {
                 <input className="height" type="number" max={9999} min={10} onChange={toolChangeHeight} value={height}></input>
                 <span>px</span>
               </div>
-
-              <div className="default" onClick={defaultSize}>                     
-                <svg fill="currentColor" width="40px" height="40px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M5,6.3422181 C6.68697264,4.25541041 9.23673432,3 12,3 C16.9705627,3 21,7.02943725 21,12 C21,16.9705627 16.9705627,21 12,21 C7.23546573,21 3.30392987,17.2866561 3.01673028,12.5530434 C3.00000681,12.2774079 3.2098965,12.0404041 3.48553201,12.0236806 C3.76116753,12.0069572 3.99817131,12.2168469 4.01489477,12.4924824 C4.27011855,16.6990708 7.76500658,20 12,20 C16.418278,20 20,16.418278 20,12 C20,7.581722 16.418278,4 12,4 C9.53058015,4 7.25395153,5.12713252 5.75425065,7 L8.5,7 C8.77614237,7 9,7.22385763 9,7.5 C9,7.77614237 8.77614237,8 8.5,8 L4.5,8 C4.22385763,8 4,7.77614237 4,7.5 L4,3.5 C4,3.22385763 4.22385763,3 4.5,3 C4.77614237,3 5,3.22385763 5,3.5 L5,6.3422181 Z"/>
-                </svg>              
-              </div>
-              {sizeChanges && (<button onClick={() => applyFilter(width, height)} className="Btn" style={{border: 'none'}}>Применить изменения</button>)}
+              {sizeChanges && (<button onClick={() => {setMode("resize"); applyFilter(width, height, mode)}} className="Btn" style={{border: 'none'}}>Применить изменения</button>)}
             </div>
         );
     }
@@ -707,9 +713,6 @@ function goNext() {
     }
 
     setModalName(`save_${Date.now()}`);
-    setModalWidth(width || imageSize.width);
-    setModalHeight(height || imageSize.height);
-
     setModalOpen(true);
     document.body.style.overflow = 'auto';
   }
@@ -725,17 +728,7 @@ function goNext() {
       path: cleanPath,
       name: modalName,
       format: modalFormat,
-      width: modalWidth,
-      height: modalHeight,
-      params: {
-        brightness,
-        contrast,
-        saturation,
-        blur,
-        hue
-      }
     };
-    console.log('Сохраняем:', save);
 
     try {
       const res = await fetch('http://localhost:3001/file/save', {
@@ -800,26 +793,6 @@ function goNext() {
     setSizeLock(!sizeLock);
   }
 
-  function changeWidth (e) {
-    const newW = Number(e.target.value);
-    setModalWidth(newW);
-
-    if (modalLock && imageSize.width > 0) {
-      const newH = Math.round((newW / imageSize.width) * imageSize.height);
-      setModalHeight(newH);
-    }
-  }
-
-  function changeHeight (e) {
-    const newH = Number(e.target.value);
-    setModalHeight(newH);
-
-    if (modalLock && imageSize.height > 0) {
-      const newW = Math.round((newH / imageSize.height) * imageSize.width);
-      setModalWidth(newW);
-    }
-  }
-
    
 
 
@@ -843,7 +816,7 @@ function goNext() {
           <a className="Btn" title="Сохранить изображение на компьютер" onClick={openModal}>Сохранить</a>
 
           <div className="ReturnButtons">
-            {hasChange && (<button onClick={() => applyFilter(width, height)} className="Btn" style={{border: 'none'}}>Применить изменения</button>)}
+            {hasChange && (<button onClick={() => applyFilter(width, height, mode)} className="Btn" style={{border: 'none'}}>Применить изменения</button>)}
             <div onClick={resetChanges}>
               <svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" fill="none" viewBox="0 0 128 128" id="refresh">
                 <path stroke="#000" strokeLinecap="round" strokeWidth="5" d="M26 64.5C26 43.237 43.237 26 64.5 26 76.4556 26 87.1383 31.4495 94.1999 40M102.979 64.5C102.979 85.763 85.742 103 64.479 103 52.5234 103 41.8407 97.5505 34.7791 89M25.0846 97.0845V81.4154C25.0846 78.9301 27.0993 76.9154 29.5846 76.9154L44.9152 76.9154M104 32V47.6691C104 50.1544 101.985 52.1691 99.4999 52.1691L84.1692 52.1691"></path>
@@ -884,30 +857,6 @@ function goNext() {
               <option>PNG</option>
               <option>WEBP</option>
             </select>
-            <label htmlFor="resize">Размер</label>
-          </div>
-          <div id="resize">
-            <div>
-              <label htmlFor="width">Ширина</label>
-              <input id="width" type="number" max={9999} min={10} value={modalWidth} onChange={changeWidth}></input>
-            </div>
-            <button className="lock" onClick={clickLock}>
-              {modalLock ?                    
-                <svg width="35px" height="35px" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <rect x="3" y="10" width="18" height="12" rx="2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                <path d="M6 6C6 4.34315 7.34315 3 9 3H15C16.6569 3 18 4.34315 18 6V10H6V6Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                </svg>             
-               :                 
-                <svg width="35px" height="35px" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <rect x="3" y="10" width="18" height="12" rx="2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                <path d="M6 10V5C6 3.34315 7.34315 2 9 2H15C16.6569 2 18 3.34315 18 5V6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                </svg>
-              }
-            </button>
-            <div>
-              <label htmlFor="height">Высота</label>
-              <input className="height" type="number" max={9999} min={10} onChange={changeHeight} value={modalHeight}></input>
-            </div>
           </div>
           <div className="btnsModal">
             <button className="close Btn" onClick={closeModal}>Отмена</button>
@@ -946,34 +895,23 @@ function goNext() {
 
           
           <div className="Work">
-            <div className="Canvas">
+            <div className={`Canvas ${!currentImage ? "empty" : "with-image"}`}>
               {!currentImage ? (
-                <div>
+                <div className="form">
                   <p>Загрузите изображение, чтобы начать</p>
-                  <input type="file" id="fileInput" accept="image/*" 
-                    style={{ display: 'none' }} onChange={fileUpload}/>
+                  <input type="file" id="fileInput" accept="image/*" style={{ display: 'none' }} onChange={fileUpload}/>
                   <button className="Btn-select" onClick={() => document.getElementById('fileInput').click()} >Выбрать файл</button>
                 </div>
               ) : (
-                 isCropping ? (
-            <ReactCrop crop={crop} onChange={setCrop}>
-                <img 
-                    ref={imgRef}
-                    src={currentImage} 
-                    style={{ maxWidth: '100%', maxHeight: '100%', width: 'auto', height: 'auto' }}
-                />
-            </ReactCrop>
-        ) : (
-          <div className="image-wrapper" style={previewMode ? preview() : {}}>
-            <img 
-                src={currentImage} 
-                
-            />
-            </div>
-        )
-              )}
-            </div>
-
+                isCropping ? (
+                  <ReactCrop crop={crop} onChange={setCrop} className="CropContainer">
+                      <img ref={imgRef} className={previewMode ? "preview-img" : ""} src={currentImage}/>
+                  </ReactCrop>
+                ) : (
+        <img src={currentImage} className={previewMode ? "preview-img" : ""} style={previewMode ? preview() : {}} />
+                )
+            )}
+          </div>
             {tools()}
           </div>
         </div>

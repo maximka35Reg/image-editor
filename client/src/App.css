@@ -187,49 +187,6 @@ body {
     font-weight: 600;
 }
 
-.saveInfo label[for="resize"] {
-    margin-bottom: 10px;
-}
-
-
-#resize {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    gap: 20px;
-    margin: 0 auto;
-}
-
-#resize div {
-    width: auto;
-    display: flex;
-    flex-direction: column;
-}
-
-#resize div label {
-    margin-bottom: 3px;
-    font-size: 0.9em;
-}
-
-#resize div input {
-    width: 90px;
-    height: 25px;
-    padding: 8px 12px;
-    font-size: 0.85em;
-    border-radius: 5px;
-    border: 1px solid #999;
-    transition: all 0.3s ease;
-    outline: none;
-}
-
-#resize div input:hover {
-    border-color: #333;
-}
-
-#resize div input:focus {
-    border-color: #7d32d3;
-}
-
 .lock {
     display: inline-block;
     background-color: #ccc;
@@ -339,52 +296,49 @@ body {
 
 .Canvas {
     display: flex;
-    justify-content: center;
-    align-items: center;
-    border: 2px dashed #333;
-    background-color: #f5f5f5;
-    color: #999;
-    font-size: 1.2em;
-    width: 60%;
-    margin: 0 auto;
-    min-height: 400px;
-    overflow: auto;
-    height: auto;
-     max-height: 80vh;
-    position: relative;
+  justify-content: center;
+  align-items: center;
+  width: 60%;
+  max-width: 60%;
+  margin: 0 auto;
+  height: 700px;
+  border: 2px dashed #333;
+  background: #f5f5f5;
+  overflow: auto;
+  position: relative;
 }
 
-.Canvas div {
-    text-align: center;
-}
-
-.Canvas .ReactCrop {
-    display: block;
+.Canvas img {
     max-width: 100%;
     max-height: 100%;
-}
-
-.image-wrapper img {
     width: auto;
     height: auto;
-    max-width: 100%;
-    max-height: 100%;
+    object-fit: contain;
     display: block;
-}
-
-.image-wrapper {
-    display: inline-block; /* ВАЖНО */
     transform-origin: center center;
     transition: all 0.1s ease;
 }
 
-.Canvas form {
+.Canvas img.preview-img {
+position: absolute;
+  left: 50%;
+  top: 50%;
+  max-width: none;
+  max-height: none;
+  width: auto;   /* inline width победит */
+  height: auto;  /* inline height победит */
+  object-fit: fill; /* если хочешь искажение */
+  
+}
+
+.Canvas .form {
     display: flex;
     flex-direction: column;
     justify-content: center;
     align-items: center;
+    font-size: 1.2em;
+    color: #999;
 }
-
 
 .Tools {
     display: flex;
@@ -464,6 +418,30 @@ body {
     gap: 8px;
 }
 
+.apply-btn, .cancel-btn {
+    padding: 8px 20px;
+    border-radius: 5px;
+    background-color: #9552e2;
+    min-height: 50px;
+    color: #fff;
+    border: none;
+    font-size: 0.9em;
+    cursor: pointer;
+}
+
+.cancel-btn  {
+    background-color: #f9f9f9;
+    color: #777;
+    border: 1px solid #777;
+    transition: all 0.3s ease;
+}
+
+.cancel-btn:hover {
+    color: #333;
+    border: 1px solid #333;
+    box-shadow: none;
+}
+
 .width, .height {
     flex-direction: column;
 }
@@ -481,4 +459,43 @@ body {
 }
 #range-line {
     cursor: pointer;
+}
+
+@media (max-width: 1280px) {
+    .Sandbox {
+        flex-direction: column;
+    }
+
+    .Aside {
+        flex-direction: row;
+    }
+
+    .Canvas {
+        width: 90%;
+        max-width: 90%;
+    }
+
+    .Tools span {
+        display: none;
+    }
+
+    .Tools {
+        gap: 50px;
+    }
+}
+
+@media (max-width: 880px) {
+    .Aside {
+        justify-content: center;
+        flex: 0.1;
+        padding: 30px 10px;
+    }
+
+    .Aside h3 {
+        display: none;
+    }
+
+    .Aside div {
+        width: 18%;
+    }
 }

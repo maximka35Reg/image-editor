@@ -291,11 +291,9 @@ router.post('/save', async (req, res) => {
         const imagePath = req.body.path; 
         const name = req.body.name;
         const format = req.body.format;
-        const width = req.body.width;
-        const height = req.body.height;
         const params = req.body.params;
 
-        if (!imagePath || !name || !format || !width || !height || !params)
+        if (!imagePath || !name || !format || !params)
             //ответ фронту
             return res.status(400).json({ message: 'Не все параметры переданы' });
 
@@ -321,7 +319,6 @@ router.post('/save', async (req, res) => {
         const savePath = path.join(processedPath, saveName);
 
         await sharp(uploadPath)
-        .resize(Number(width), Number(height), {  fit: 'fill' }) //изменение размера
         .toFormat(format.toLowerCase()) // конвертация в нужный формат
         .toFile(savePath); //сохранение на диск по выбранному пути
 
