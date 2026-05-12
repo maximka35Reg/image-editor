@@ -1,3 +1,100 @@
 {
-  "images": []
+  "images": [
+    {
+      "id": "1778513775640",
+      "originalName": "ÐºÐ¾Ð½ÐºÑÑÑ.png",
+      "originalPath": "/uploads/2d72df449529c4b4af431bda9129e13c",
+      "currentPath": "/processed/1778513775640_v2.jpg",
+      "size": 92083,
+      "uploadDate": "2026-05-11T15:36:15.640Z",
+      "versions": [
+        {
+          "path": "/uploads/2d72df449529c4b4af431bda9129e13c",
+          "atEdited": 1778513775640,
+          "action": "upload"
+        },
+        {
+          "path": "/processed/1778513775640_v1.jpg",
+          "params": {
+            "brightness": 0,
+            "contrast": 100,
+            "saturation": 0,
+            "blur": 0,
+            "hue": 0,
+            "invert": 0,
+            "sepia": 0,
+            "width": null,
+            "height": null,
+            "turn": 0,
+            "flipHorizontal": false,
+            "flipVertical": false
+          }
+        },
+        {
+          "path": "/processed/1778513775640_v2.jpg",
+          "params": {
+            "brightness": 15,
+            "contrast": -5,
+            "saturation": 100,
+            "blur": 1.5,
+            "hue": 0,
+            "invert": 0,
+            "sepia": 0,
+            "width": null,
+            "height": null,
+            "turn": 0,
+            "flipHorizontal": false,
+            "flipVertical": false
+          }
+        }
+      ]
+    },
+    {
+      "id": "1778513820425",
+      "originalName": "ÐºÐ¾Ð½ÐºÑÑÑ.png",
+      "originalPath": "/uploads/4f8c0b1dc82944d29a680dbe7faf5e52",
+      "currentPath": "/uploads/4f8c0b1dc82944d29a680dbe7faf5e52",
+      "size": 92083,
+      "uploadDate": "2026-05-11T15:37:00.425Z",
+      "versions": [
+        {
+          "path": "/uploads/4f8c0b1dc82944d29a680dbe7faf5e52",
+          "atEdited": 1778513820425,
+          "action": "upload"
+        }
+      ]
+    },
+    {
+      "id": "1778515234537",
+      "originalName": "a744a794efe0a5eb59ccfc11e9697fe1.jpg",
+      "originalPath": "/uploads/b925d2f32db782c67eae0c66e5db47bf",
+      "currentPath": "/processed/1778515234537_v1.jpg",
+      "size": 56077,
+      "uploadDate": "2026-05-11T16:00:34.538Z",
+      "versions": [
+        {
+          "path": "/uploads/b925d2f32db782c67eae0c66e5db47bf",
+          "atEdited": 1778515234538,
+          "action": "upload"
+        },
+        {
+          "path": "/processed/1778515234537_v1.jpg",
+          "params": {
+            "brightness": 0,
+            "contrast": 0,
+            "saturation": 0,
+            "blur": 0,
+            "hue": 0,
+            "invert": 0,
+            "sepia": 0,
+            "width": null,
+            "height": null,
+            "turn": 0,
+            "flipHorizontal": false,
+            "flipVertical": false
+          }
+        }
+      ]
+    }
+  ]
 }

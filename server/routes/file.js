@@ -1,25 +1,33 @@
-const {Router} = require('express');
-const multer = require('multer');   // подключение библиотеки для работы с файлами
-const path = require('path');       // подключение плагина для работы с путями файловой системы
-const fs = require('fs');           // подключение плагина для работы с файловой системой
-const sharp = require('sharp');     // подключение плагина для работы с изображениями
+const {Router} = require('express'); // подключение из бибилиотеки только функции Router для создания маршрутов
+const multer = require('multer');    // библиотека которая принимает загружаемые файлы через формы
+const path = require('path');        // подключение плагина для работы с путями файловой системы
+const fs = require('fs');            // подключение плагина для работы с файловой системой
+const sharp = require('sharp');      // библиотека для обработки изображений
 
+// создание экземпляра маршрутизатора
 const router = Router();
+
+
 // Настройка multer (как и куда сохранять файл)
 const upload = multer({
-    dest: path.join(__dirname, '../uploads'),
-    limits: { fileSize: 10 * 1024 * 1024 }
+    dest: path.join(__dirname, '../uploads'), // место куда сохранять загружаемый файл
+    limits: { fileSize: 8 * 1024 * 1024 }     // ограничение на размер файла
 });
+// автоматически добавляет поле file к req
 
 
-// .../file/upload
+// эндпоинт для POST запросов "/file/upload"
+// upload.single - принимает один файл из поля формы image
+// async(req, res) - асинхронная функция-обработчик
 router.post('/upload', upload.single('image'), async(req, res) => {
     try {
         if (!req.file) {
             return res.status(400).json({ message: 'Файл не загружен' });
+            // json() - преобразует js-объект в json
+            // метод ожидает в качестве аргумента именно js-объект
         }
 
-        const imageId = Date.now().toString();
+        const imageId = Date.now().toString(); // возвращает текущее время в мс
         const uploadPath = `/uploads/${req.file.filename}`;
 
         // Создание объекта json с информацией о файле для последующего сохранения в БД
@@ -33,7 +41,7 @@ router.post('/upload', upload.single('image'), async(req, res) => {
             versions: [{
                 path: uploadPath,
                 atEdited: Date.now(),
-                action: { type: 'upload' }
+                action: 'upload'
             }],
         };
 
@@ -43,52 +51,30 @@ router.post('/upload', upload.single('image'), async(req, res) => {
         
         try {
             const content = fs.readFileSync(dbPath, 'utf-8');
-            db = JSON.parse(content);
+            db = JSON.parse(content); // превращаем json в js-объект
         }
         catch (e) {
             return res.status(400).json({ message: 'Ошибка чтения БД' });
         }
 
-        // Добавление в массив объекта БД нового объекта загруженного файла
+        // Добавление в БД объекта загруженного изображения
         db.images.push(image);
 
-        // Переписывание файла БД с новым объектом
+        // Переписывание БД с новым объектом (превращаем объект в json-строку)
         fs.writeFileSync(dbPath, JSON.stringify(db, null, 2));
+        // null включает все поля в результат без замен и фильтров
+        // 2 пробела для каждого уровня вложенности
 
         // Сообщение об успешной работе
         res.json({
             message: 'Файл успешно загружен',
             file: {
-        id: imageId,                   
-        path: uploadPath,
-        originalName: req.file.originalname,
-        size: req.file.size
-    }
+                id: imageId,                   
+                path: uploadPath,
+                originalName: req.file.originalname,
+                size: req.file.size
+            }
         });
-        res.redirect('/')
-    }
-    catch (e) {
-        return res.status(500).json({ message: 'Что-то пошло не так' });
-    }
-});
-
-
-// .../file/view
-router.get('/view', async(req, res) => {
-    try {
-        const {img} = req.query;
-
-        if (!img) {
-            return res.status(400).json({ message: 'Не указан файл' });
-        }
-
-        const pathImg = path.join(__dirname, '../uploads', img);
-
-        if (!fs.existsSync(pathImg)) {
-            return res.status(404).json({ message: 'Файл не найден' });
-        }
-
-        res.sendFile(pathImg);
     }
     catch (e) {
         return res.status(500).json({ message: 'Что-то пошло не так' });
@@ -117,85 +103,86 @@ router.post('/filters', upload.single('image'), async(req, res) => {
         const width = Number(req.body.width);
         const height = Number(req.body.height);
 
-       let changedImg = sharp(imagePath);
+        let changedImg = sharp(imagePath); // создаём объект sharp для обработки изображения
 
-// 1. CROP (если есть)
-if (
-    req.body.cropX !== undefined &&
-    req.body.cropY !== undefined &&
-    req.body.cropWidth &&
-    req.body.cropHeight
-) {
-    const cropX = Math.max(0, Math.round(Number(req.body.cropX)));
-    const cropY = Math.max(0, Math.round(Number(req.body.cropY)));
-    const cropWidth = Math.max(1, Math.round(Number(req.body.cropWidth)));
-    const cropHeight = Math.max(1, Math.round(Number(req.body.cropHeight)));
+        // Обрезка (если есть)
+        if (req.body.cropX !== undefined && req.body.cropY !== undefined && req.body.cropWidth && req.body.cropHeight)
+        {
+            const cropX = Math.max(0, Math.round(Number(req.body.cropX)));
+            const cropY = Math.max(0, Math.round(Number(req.body.cropY)));
+            const cropWidth = Math.max(1, Math.round(Number(req.body.cropWidth)));
+            const cropHeight = Math.max(1, Math.round(Number(req.body.cropHeight)));
 
-    changedImg = changedImg.extract({
-        left: cropX,
-        top: cropY,
-        width: cropWidth,
-        height: cropHeight
-    });
-}
+            // извлекаем прямоугольную область изображения
+            changedImg = changedImg.extract({
+                left: cropX,
+                top: cropY,
+                width: cropWidth,
+                height: cropHeight
+            });
+        }
 
-// 2. ROTATE (до resize!)
-if (turn !== 0) {
-    changedImg = changedImg.rotate(turn);
-}
+        // Поворот
+        if (turn !== 0) {
+            changedImg = changedImg.rotate(turn);
+        }
 
-// 3. FLIP (до фильтров)
-if (flipHorizontal) changedImg = changedImg.flop();
-if (flipVertical) changedImg = changedImg.flip();
+        // Отражение
+        if (flipHorizontal) changedImg = changedImg.flop();
+        if (flipVertical) changedImg = changedImg.flip();
 
-// 4. FILTERS
-if (invert === 1) {
-    changedImg = changedImg.negate({ alpha: false });
-}
+        // Фильтры
+        if (invert === 1) changedImg = changedImg.negate({ alpha: false }); // прозрачность не инвертируется
 
-if (saturation === -100) {
-    changedImg = changedImg.grayscale();
-}
-
-if (brightness !== 0 || saturation !== 0 || hue !== 0) {
-    changedImg = changedImg.modulate({
-        brightness: 1 + brightness / 100,
-        saturation: 1 + saturation / 100,
-        hue: hue
-    });
-}
-
-if (contrast !== 0) {
-    const c = 1 + contrast / 100;
-    changedImg = changedImg.linear(c, -128 * (c - 1));
-}
-
-if (blur > 0) {
-    changedImg = changedImg.blur(blur);
-}
-
-if (sepia > 0) {
-    const s = sepia / 100;
-    const matrix = [
-        [0.393 + 0.607 * (1 - s), 0.769 - 0.769 * (1 - s), 0.189 - 0.189 * (1 - s)],
-        [0.349 - 0.349 * (1 - s), 0.686 + 0.314 * (1 - s), 0.168 - 0.168 * (1 - s)],
-        [0.272 - 0.272 * (1 - s), 0.534 - 0.534 * (1 - s), 0.131 + 0.869 * (1 - s)]
-    ];
-    changedImg = changedImg.recomb(matrix);
-}
-
-// 5. RESIZE (всегда последним!)
-if (width && height && width > 0 && height > 0) {
-    changedImg = changedImg.resize(width, height, { fit: 'fill' });
-}
+        if (saturation === -100) changedImg = changedImg.grayscale();
 
 
+        if (brightness !== 0 || saturation !== 0 || hue !== 0) { 
+            // преобразуем коэффициенты для изменения яркости и насыщенности
+            changedImg = changedImg.modulate({
+                brightness: 1 + brightness / 100,
+                saturation: 1 + saturation / 100,
+                hue: hue
+            });
+        }
 
-    
+        if (contrast !== 0) {
+            const c = 1 + contrast / 100;
+            // преобразование яркости каждого пикселя
+            // насколько сильно отличаются светлые и темные участки
+            // сдвиг нужен для того чтобы эффект не был похож на изменение яркости (тормоз для светлых оттенков и усилитель для тёмных)
+            changedImg = changedImg.linear(c, -128 * (c - 1));
+        }
+
+        if (blur > 0) changedImg = changedImg.blur(blur);
+
+
+        if (sepia > 0) {
+            const s = sepia / 100; // интенсивность сепии
+
+            // эмпирическая матрица для создания плавного перехода сепии
+            // строки формируют новые цвета каналов, а столбцы определяют сколько брать от старых
+            const matrix = [
+                [0.393 + 0.607 * (1 - s), 0.769 - 0.769 * (1 - s), 0.189 - 0.189 * (1 - s)],
+                [0.349 - 0.349 * (1 - s), 0.686 + 0.314 * (1 - s), 0.168 - 0.168 * (1 - s)],
+                [0.272 - 0.272 * (1 - s), 0.534 - 0.534 * (1 - s), 0.131 + 0.869 * (1 - s)]
+            ];
+            changedImg = changedImg.recomb(matrix);
+        }
+
+        // Изменение размера с возможностью искажения пропорций
+        if (width && height && width > 0 && height > 0) {
+            changedImg = changedImg.resize(width, height, { fit: 'fill' });
+        }
+
+
+
+        // формирование имени для сохранения
         const newVersion = Number(version) + 1;
         const filename = `${imageId}_v${newVersion}.jpg`;
         const uploadPath = path.join(__dirname, '../processed', filename);
 
+        // сохранение обработанного изображения
         await changedImg.toFile(uploadPath);
 
         // Обновление БД
@@ -203,23 +190,28 @@ if (width && height && width > 0 && height > 0) {
         let db = { images: [] };
 
         if (fs.existsSync(dbPath)) {
-            db = JSON.parse(fs.readFileSync(dbPath));
+            db = JSON.parse(fs.readFileSync(dbPath)); // json в js
         }
 
+        // ищем первый элемент удовлетворяющий условию
         let img = db.images.find(img => img.id === imageId);
 
+        // если ещё не разу не применялись фильтры - создаём новую запись
         if (!img) {
             img = {
                 id: imageId,
-                defaultPath: `/uploads/${path.basename(imagePath)}`,
+                defaultPath: `/uploads/${path.basename(imagePath)}`, // basename извлекает только имя файла
                 versions: []
             };
             db.images.push(img);
         }
 
+        // проверка от дублирования версий
         const versionExists = img.versions.some(v => v.path === `/processed/${filename}`)
 
-        if (!versionExists) 
+        // добавление новой версии в историю
+        // параметры сохраняются для отката к предыдущей версии
+        if (!versionExists) {
             img.versions.push({
                 path: `/processed/${filename}`,
                 params: {
@@ -232,17 +224,20 @@ if (width && height && width > 0 && height > 0) {
                     sepia: sepia,
                     width: width || null,
                     height: height || null,
-                    turn: turn,                    // ← добавить
-                    flipHorizontal: flipHorizontal,          // ← добавить
+                    turn: turn,
+                    flipHorizontal: flipHorizontal,
                     flipVertical: flipVertical
                 }
             });
+        }
 
-
+        // обновление ссылки на текущую версию изображения в записи изображения
         img.currentPath = `/processed/${filename}`;
 
+        // сохранение обновлённой БД
         fs.writeFileSync(dbPath, JSON.stringify(db, null, 2));
 
+        // возвращаем путь к обработанному изображению в виде json 
         res.json({ path: `/processed/${filename}` });
     }
     catch (error) {
@@ -251,39 +246,6 @@ if (width && height && width > 0 && height > 0) {
     }
 });
 
-router.post('/crop', upload.single('image'), async (req, res) => {
-    try {
-       const { cropX, cropY, cropWidth, cropHeight } = req.body;
-        
-        console.log('Сервер получил:', { cropX, cropY, cropWidth, cropHeight });
-        
-        if (cropX === undefined || cropY === undefined || cropWidth === undefined || cropHeight === undefined) {
-            return res.status(400).json({ message: 'Не все параметры' });
-        }
-
-        const imagePath = req.file.path;
-        
-        // Проверяем, что координаты не отрицательные
-        const left = Math.max(0, Math.round(Number(cropX)));
-        const top = Math.max(0, Math.round(Number(cropY)));
-        const width = Math.max(1, Math.round(Number(cropWidth)));
-        const height = Math.max(1, Math.round(Number(cropHeight)));
-        
-        console.log('После обработки:', { left, top, width, height });
-        
-        const filename = `cropped_${Date.now()}.jpg`;
-        const outputPath = path.join(__dirname, '../processed', filename);
-        
-        await sharp(imagePath)
-            .extract({ left, top, width, height })
-            .toFile(outputPath);
-        
-        res.json({ path: `/processed/${filename}` });
-    } catch (error) {
-        console.error('Ошибка обрезки:', error);
-        res.status(500).json({ message: 'Ошибка обрезки: ' + error.message });
-    }
-});
 
 // .../file/save
 router.post('/save', async (req, res) => {
@@ -291,42 +253,45 @@ router.post('/save', async (req, res) => {
         const imagePath = req.body.path; 
         const name = req.body.name;
         const format = req.body.format;
-        const params = req.body.params;
 
-        if (!imagePath || !name || !format || !params)
-            //ответ фронту
+        if (!imagePath || !name || !format)
             return res.status(400).json({ message: 'Не все параметры переданы' });
 
         // адрес разделяется на слеши и берется последний элемент из полученного массива - название файла
         const filename = imagePath.split('/').pop();
 
-        //path.join позволяет безопасно склеить пути чтобы работало на разынх ОС (разные слеши используют)
+        // определяем, где лежит файл изображения
         let uploadPath;
         if (imagePath.includes('/processed/')) {
             uploadPath = path.join(__dirname, '../processed', filename);
         } else {
             uploadPath = path.join(__dirname, '../uploads', filename);
         }
+        // path.join позволяет безопасно склеить пути чтобы работало на разынх ОС
+        // dirname возвращает абсолютный путь к директории
 
+        // проверка, существует ли файл по указанному пути
         if (!fs.existsSync(uploadPath)) {
             return res.status(404).json({ message: 'Исходный файл не найден' });
         }
 
-        //dirname - папка в которой лежит текущий файл
-        //../ поднимает на один уровень вверх и переходит к папке processed
+        // подготовка пути для сохранения
         const processedPath = path.join(__dirname, '../saved');
         const saveName = `${name}_${Date.now()}.${format.toLowerCase()}`;
         const savePath = path.join(processedPath, saveName);
 
-        await sharp(uploadPath)
+        await sharp(uploadPath) // загрузка сохраняемого изображения
         .toFormat(format.toLowerCase()) // конвертация в нужный формат
         .toFile(savePath); //сохранение на диск по выбранному пути
 
         res.setHeader('Content-Type', `image/${format.toLowerCase()}`);
+        
+        // указываем полученный ответ в виде файла надо скачать
         res.setHeader('Content-Disposition', `attachment; filename="${name}.${format.toLowerCase()}"`);
 
-        const fileStream = fs.createReadStream(savePath);
-        fileStream.pipe(res);
+
+        const fileStream = fs.createReadStream(savePath); // поток чтения данных файла для сохранения
+        fileStream.pipe(res); // объединение потока чтения с потоком ответа - файл читается и частями сразу же отправляется клиенту (сохраняется)
     }
     catch (error) {
         console.error('Ошибка сохранения: ', error);
@@ -334,4 +299,7 @@ router.post('/save', async (req, res) => {
     }
 });
 
+// экспорт одного модуля для импорта в server.js
 module.exports = router;
+
+// exports.module = value - экспорт нескольких вещей

@@ -19,7 +19,6 @@ function App() {
 
   const [hasChange, setHasChange] = useState(false);
   const [previewMode, setPreviewMode] = useState(false);
-  const [mode, setMode] = useState(null);
 
 
   const [active, setActive] = useState('crop');
@@ -53,90 +52,92 @@ function App() {
   const [modalOpen, setModalOpen] = useState(false);
   const [modalName, setModalName] = useState('');
   const [modalFormat, setModalFormat] = useState('JPEG');
-  const [modalLock, setModalLock] = useState(true);
-
 
   const imgRef = useRef(null);
-  useEffect(() => {
-    console.log('currentVersion ИЗМЕНИЛСЯ:', currentVersion);
-}, [currentVersion]);
 
-useEffect(() => {
-    console.log('ПАРАМЕТРЫ ИЗМЕНИЛИСЬ:', {
-        brightness, contrast, saturation, blur, hue, invert, sepia
-    });
-}, [brightness, contrast, saturation, blur, hue, invert, sepia]);
-    async function fileUpload (e) {
-    const file = e.target.files[0];
+
+  async function fileUpload (e) {
+    const file = e.target.files[0]; // получение файла из поля ввода
     if(!file) return;
 
     const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
-        if (!allowedTypes.includes(file.type)) {
-            alert('Можно загружать только изображения.');
-            e.target.value = '';
-            return;
+      if (!allowedTypes.includes(file.type)) {
+        alert('Можно загружать только изображения в формате .jpeg, .jpg, .png или .webp');
+        e.target.value = ''; // очистка поля ввода чтобы выбрать другой файл
+        return;
     }
 
-    const formData = new FormData();
+    const formData = new FormData(); // объект для упаковки данных в формат для передачи данных по http
     formData.append('image', file);
 
-    const res = await fetch ('http://localhost:3001/file/upload', {
-      method: 'POST',
-      body: formData
-    });
+    try {
+        const res = await fetch('http://localhost:3001/file/upload', {
+            method: 'POST',
+            body: formData
+        });
 
-    const data = await res.json();
+        const data = await res.json(); // читаем ответ с сервера и переводим его из JSON в JS
 
-    const firstVersion = {
-      path: `http://localhost:3001${data.file.path}`,
-      timestamp: Date.now(),
-      name: file.name,
-      isOriginal: true,
-      params: {
-        width: null,
-        height: null,
-        brightness: 0,
-        contrast: 0,
-        saturation: 0,
-        blur: 0,
-        hue: 0,
-        sepia: 0,
-        turn: 0,
-        flipHorizontal: false,
-        flipVertical: false
+        if (!res.ok) {
+            alert("Ошибка:" + data.message);
+            return;
+        }
+		
+        // создание объекта оригинального изображения
+      const firstVersion = {
+        path: `http://localhost:3001${data.file.path}`,
+        name: file.name,
+        params: {
+          width: null, height: null,
+          brightness: 0, contrast: 0, saturation: 0, blur: 0, hue: 0, sepia: 0,
+          turn: 0, flipHorizontal: false, flipVertical: false
+        }
       }
+ 
+      setImageId(data.file.id || Date.now().toString());
+      setOriginalImg(`http://localhost:3001${data.file.path}`);
+      setCurrentImage(`http://localhost:3001${data.file.path}`);
+      setVersions([firstVersion]);
+      setCurrentVersion(0);
+
+      const img = new Image();
+
+      // функция которая выполнится когда картинка загрузится в браузер
+      // необходима для того чтобы узнать размеры изображения
+      img.onload = () => {
+        setImageSize({width: img.width, height: img.height});
+        setOriginalSize({ width: img.width, height: img.height });
+        setWidth(img.width);
+        setHeight(img.height);
+        setPreviewMode(false);
+
+        resetParams(img.width, img.height);
+      };
+      img.src = `http://localhost:3001${data.file.path}`;
+    } catch (e) {
+      alert("Ошибка:" + e.message);
     }
-
-    setImageId(data.file.id || Date.now().toString());
-    setOriginalImg(`http://localhost:3001${data.file.path}`);
-    setCurrentImage(`http://localhost:3001${data.file.path}`);
-    setVersions([firstVersion]);
-    setCurrentVersion(0);
-
-    //Получение размера изображения
-    const img = new Image();
-    img.onload = () => {
-      setImageSize({width: img.width, height: img.height});
-      setOriginalSize({ width: img.width, height: img.height });
-      setWidth(img.width);
-      setHeight(img.height);
-      setPreviewMode(false);
-
-      resetParams(img.width, img.height);
-    };
-    img.src = `http://localhost:3001${data.file.path}`;
   }
   
 
-    async function applyFilter(targetWidth = width, targetHeight = height, type = mode) {
-    if (!currentImage || !imageId) return;
+  async function applyFilter(targetWidth = width, targetHeight = height) {
+    if (!currentImage || !imageId) 
+    {
+        alert('Нет изображения для обработки. Пожалуйста, загрузите изображение');
+        return;
+    }
+
+    if (targetWidth <= 0 || targetHeight <= 0) {
+      alert("Указан некорректный размер изображения. Введите пожалуйста целое положительное число");
+      return
+    }
 
     try {
-      const response = await fetch(currentImage);
+      const response = await fetch(currentImage); // отдаём файл и собираем его в памяти
       const blob = await response.blob();
 
       const formData = new FormData();
-      formData.append('image', blob, 'image.jpg');
+      formData.append('image', blob, 'image.jpg'); // 3 параметр чтобы сервер понял, что за файл отправляется
       formData.append('imageId', imageId);
       formData.append('version', currentVersion);
 
@@ -147,26 +148,30 @@ useEffect(() => {
       formData.append('hue', hue);
       formData.append('invert', invert);
       formData.append('sepia', sepia);
-      formData.append('flipHorizontal', flipHorizontal ? 1 : 0);
+      formData.append('flipHorizontal', flipHorizontal ? 1 : 0); // серверу проще работать с цифрами чем с булевыми значениями
       formData.append('flipVertical', flipVertical ? 1 : 0);
       formData.append('turn', turn);
 
+      // добавляем изменение размера в запрос (если оно было)
       let safeWidth = null;
-let safeHeight = null;
+      let safeHeight = null;
 
-if (width && height && (width !== imageSize.width || height !== imageSize.height)) {
-    safeWidth = targetWidth || width || imageSize.width;
-    safeHeight = targetHeight || height || imageSize.height;
+      if (width && height && (width !== imageSize.width || height !== imageSize.height)) {
+        safeWidth = targetWidth || width || imageSize.width;
+        safeHeight = targetHeight || height || imageSize.height;
 
-    formData.append('width', safeWidth);
-    formData.append('height', safeHeight);
-}
+        formData.append('width', safeWidth);
+        formData.append('height', safeHeight);
+      }
 
+      // добавление параметров обрезки в запрос к серверу (если она была)
       if (isCropping && crop.width && crop.height && imgRef.current) {
         const img = imgRef.current;
-        const naturalWidth = img.naturalWidth;
-        const naturalHeight = img.naturalHeight;
-        const rect = img.getBoundingClientRect();
+        const naturalWidth = img.naturalWidth; // реальная ширина картинки в пикселях
+        const naturalHeight = img.naturalHeight; // реальная высота картинки в пикселях
+        const rect = img.getBoundingClientRect(); // размеры картинки на экране в браузере (масштабировны через css)
+        
+        // коэффициент масштабирования (каждый экранный пиксель соответствует N пикселям реального изображения)
         const scaleX = naturalWidth / rect.width;
         const scaleY = naturalHeight / rect.height;
         
@@ -181,88 +186,100 @@ if (width && height && (width !== imageSize.width || height !== imageSize.height
         body: formData
       });
 
-      const data = await res.json();
+      if (!res.ok) {
+          alert("Ошибка:" + data.message);
+          return;
+      }
 
-if (data.path) {
+      const data = await res.json();  
 
-  const basePath = `http://localhost:3001${data.path}`;
-  const newPath = `${basePath}?t=${Date.now()}`; // 🔥 добавили анти-кэш
+      if (!data.path) {
+          alert("Сервер не вернул путь к изображению");
+          return;
+      }
 
-  const newVersion = {
-    path: newPath,
-    params: {
-      brightness,
-      contrast,
-      saturation,
-      blur,
-      hue,
-      invert,
-      sepia,
-      width: safeWidth,
-      height: safeHeight,
-      turn,
-      flipHorizontal,
-      flipVertical
-    },
-  };
+      const basePath = `http://localhost:3001${data.path}`;
+      const newPath = `${basePath}?t=${Date.now()}`; 
+      // обход кэша браузера чтобы он понимал, что это новая картинка
+      // поскольку при изменении они просто перезаписываются и браузер отображает старую картинку
 
-  setCurrentImage(newPath); // 🔥 используем новый путь
+      const newVersion = {
+        path: newPath,
+        params: {
+          brightness,
+          contrast,
+          saturation,
+          blur,
+          hue,
+          invert,
+          sepia,
+          width: safeWidth ?? imageSize.width, // оператор нулевого слияния (проверяет на null и undefined)
+          height: safeHeight ?? imageSize.height,
+          turn,
+          flipHorizontal,
+          flipVertical
+        },
+      };
 
-  const newVersions = [...versions.slice(0, currentVersion + 1), newVersion];
-  setVersions(newVersions);
-  setCurrentVersion(newVersions.length - 1);
+      setCurrentImage(newPath);
 
-  setPreviewMode(false);
-  setHasChange(false);
-  setIsCropping(false);
+      // ... - спред-оператор который разворачивает массив (чтобы не было массива внутри массива)
+      // slice - берёт часть существующего массива
+      const newVersions = [...versions.slice(0, currentVersion + 1), newVersion];
+      setVersions(newVersions);
+      setCurrentVersion(newVersions.length - 1);
 
-  const img = new Image();
-  img.onload = () => {
-     
-  const w = img.naturalWidth;
-  const h = img.naturalHeight;
+      setPreviewMode(false);
+      setHasChange(false);
+      setIsCropping(false);
 
-  setWidth(w);
-  setHeight(h);
-  setImageSize({ width: w, height: h });
+      // получение размеров обработанного изображения
+      // и сброс всех парамметров фильтров
+      const img = new Image();
+      img.src = newPath;
+      img.onload = () => {
+        const w = img.naturalWidth;
+        const h = img.naturalHeight;
 
+        setWidth(w);
+        setHeight(h);
+        setImageSize({ width: w, height: h });
 
-    setBrightness(0);
-    setContrast(0);
-    setSaturation(0);
-    setBlur(0);
-    setHue(0);
-    setInvert(0);
-    setSepia(0);
-    setParamValue(0);
-    setCurrentParam('brightness');
-    setTurn(0);
-setFlipHorizontal(false);
-setFlipVertical(false);
-setMode(null);
-    setHasChange(false);
-    setSizeChanges(false);
-  };
-
-  img.src = newPath; // 🔥 тоже новый путь
-}
+        setBrightness(0);
+        setContrast(0);
+        setSaturation(0);
+        setBlur(0);
+        setHue(0);
+        setInvert(0);
+        setSepia(0);
+        setParamValue(0);
+        setCurrentParam('brightness');
+        setTurn(0);
+        setFlipHorizontal(false);
+        setFlipVertical(false);
+        setHasChange(false);
+        setSizeChanges(false);
+      }
     }
     catch (error) {
-      console.error('Ошибка: ', error);
+      alert("Ошибка: " + error.message)
     }
   }
 
 
 
-  const applyCrop = async () => {
+  async function applyCrop() {
     if (!crop.width || !crop.height || !imgRef.current) return;
-    await applyFilter(width, height, mode);
+    await applyFilter();
     setIsCropping(false);
   };
 
   function selectParameter(param) {
-  setCurrentParam(param);
+    // сохранение в состоянии выбранного параметра
+    // чтобы система понимала какую переменную нужно именно обновлять
+    setCurrentParam(param);
 
+    // настройка панели инструментов
     switch (param) {
       case 'brightness':
         setParamLabel('Яркость');
@@ -298,10 +315,13 @@ setMode(null);
   }
 
 
-    function paramChange (e) {
+  function paramChange (e) {
+    // извлечение значения ползунка параметра
+    // и сохранение его в состоянии чтобы обновить интерфейс
     const newValue = Number(e.target.value);
     setParamValue(newValue);
 
+    // сохранение значения для конкретного выбранного параметра
     switch(currentParam) {
       case 'brightness':
         setBrightness(newValue);
@@ -318,14 +338,14 @@ setMode(null);
       case 'hue':
         setHue(newValue);
         break;
-    }
-    
-    setPreviewMode(true);
-    setHasChange(true);
+    }  
+    setPreviewMode(true); // включаем режим предпросмотра
+    setHasChange(true); // показываем флаг о внесении изменений
   }
 
+
+  // функция сброса параметров к исходным значениям
   function resetParams(newWidth, newHeight) {
-    console.trace('resetParams ВЫЗВАН');
     setWidth(newWidth);
     setHeight(newHeight);
     setSizeChanges(false);
@@ -347,10 +367,11 @@ setMode(null);
   }
 
 
-   function applyFilterSet(set) {
-    console.log('=== ПРЕСЕТ ===', set);
-    
-    // ВРЕМЕННЫЕ ПЕРЕМЕННЫЕ
+  // функция для применения пресетов фильтров
+  function applyFilterSet(set) {
+
+    // локальные переменные для хранения значений параметров пресета
+    // удобнее использовать для того чтобы избежать большой перерисовки интерфейса
     let newBrightness = 0;
     let newContrast = 0;
     let newSaturation = 0;
@@ -383,7 +404,7 @@ setMode(null);
             break;
         case 'soft': 
             newBrightness = 15;
-            newBlur = 1.5;
+            newBlur = 1;
             newContrast = -5;
             newSaturation = 100;
             break;
@@ -391,6 +412,7 @@ setMode(null);
             break;
     }
     
+    // применяем изменение как единое целое
     setBrightness(newBrightness);
     setContrast(newContrast);
     setSaturation(newSaturation);
@@ -402,13 +424,16 @@ setMode(null);
     setCurrentParam(set);
     setPreviewMode(true);
     setHasChange(true);
-}
+  }
 
-   function toolChangeWidth (e) {
+  function toolChangeWidth (e) {
+    // извлечение значения из поля ввода для ширины
+    // и изменение состояния для перерисовки интерфейса
     const newW = Number(e.target.value);
     setWidth(newW);
 
     if (sizeLock && imageSize.width > 0) {
+      // пересчёт высоты по формуле: новая высота/старая высота = новая ширина/ старая ширина
       const newH = Math.round((newW / imageSize.width) * imageSize.height);
       setHeight(newH);
     }
@@ -431,47 +456,59 @@ setMode(null);
   }
 
 
+  // функция для мгновенного просмотра изменений над изображением
   function preview() {
- const canvasWidth = window.innerWidth * 0.6;   // 60%
-  const canvasHeight = window.innerHeight * 0.8; // 80vh
+    // определение размеров области предпросмотра
+    const canvasWidth = window.innerWidth * 0.6;
+    const canvasHeight = window.innerHeight * 0.8;
 
-  const scaleW = canvasWidth / width;
-  const scaleH = canvasHeight / height;
+    // коэффициенты для масштабирования изображения
+    // чтобы уместить его в рабочей области
+    const scaleW = canvasWidth / width;
+    const scaleH = canvasHeight / height;
 
-  const scale = Math.min(scaleW, scaleH, 1);
+    // выбор наименьшего коэффициента чтобы уместить и по ширине и по высоте
+    // но не крупнее оригинала (1)
+    const scale = Math.min(scaleW, scaleH, 1);
 
+    // формирование фильтров
+    // идёт преобразование значения параметров в коэффициенты 
+    // понятные CSS
     let filters = `
-      brightness(${1 + brightness/100})
+      brightness(${1 + brightness/100}) 
       contrast(${1 + contrast/100})
       saturate(${1 + saturation/100})
-      ${blur> 0 ? `blur(${blur}px)` : ''}
+      ${blur > 0 ? `blur(${blur}px)` : ''}
       ${hue !== 0 ? ` hue-rotate(${hue}deg)` : ''}
-    ${sepia > 0 ? ` sepia(${sepia}%)` : ''}
-    ${invert === 1 ? ` invert(100%)` : ''}
+      ${sepia > 0 ? ` sepia(${sepia}%)` : ''}
+      ${invert === 1 ? ` invert(100%)` : ''}
     `;
     
     return {
-    filter: filters,
-    width: width + "px",
-    height: height + "px",
-    transform: `translate(-50%, -50%)
-  rotate(${turn}deg)
-  scaleX(${flipHorizontal ? -1 : 1})
-  scaleY(${flipVertical ? -1 : 1})
-  scale(${scale})`,
-    transformOrigin: "center center",
-  };
+      filter: filters,
+      width: width + "px",
+      height: height + "px",
+      transform: `translate(-50%, -50%)
+        rotate(${turn}deg)
+        scaleX(${flipHorizontal ? -1 : 1})
+        scaleY(${flipVertical ? -1 : 1})
+        scale(${scale})`,
+      transformOrigin: "center center", // изменение относительно центра изображения
+    };
   };
 
 
   function loadVersion(versionIndex) {
-    console.trace('loadVersion ВЫЗВАН, версия:', versionIndex);
     if (versionIndex < 0 || versionIndex >= versions.length) return;
     
+    // достаём объект нужной версии из массива
     const version = versions[versionIndex];
+
     setCurrentVersion(versionIndex);
     setCurrentImage(version.path);
     
+    // восстановление параметров фильтров и размеров
+    // || защищает от undefined
     if (version.params) {
         setBrightness(version.params.brightness || 0);
         setContrast(version.params.contrast || 0);
@@ -484,44 +521,49 @@ setMode(null);
         setFlipHorizontal(version.params.flipHorizontal || false);
         setFlipVertical(version.params.flipVertical || false);
         
-        const newWidth = version.params.width || imageSize.width;
-        const newHeight = version.params.height || imageSize.height;
+        // ?? - оператор нулевого слияния - возвращает 2е значение если 1е равно null или undefined 
+        const newWidth = version.params.width ?? imageSize.width;
+        const newHeight = version.params.height ?? imageSize.height;
         setWidth(newWidth);
         setHeight(newHeight);
         setImageSize({ width: newWidth, height: newHeight });
     }
     
+    // сброс состояний режимов и флагов
     setPreviewMode(false);
     setSizeChanges(false);
     setHasChange(false);
     setIsCropping(false);
-}
+  }
 
-function goPrev() {
-    if (currentVersion > 0) {
-        loadVersion(currentVersion - 1);
-    }
-}
+  function goPrev() {
+      if (currentVersion > 0) {
+          loadVersion(currentVersion - 1);
+      }
+  }
 
-function goNext() {
-    if (currentVersion < versions.length - 1) {
-        loadVersion(currentVersion + 1);
-    }
-}
-
+  function goNext() {
+      if (currentVersion < versions.length - 1) {
+          loadVersion(currentVersion + 1);
+      }
+  }
 
   function resetChanges() {
-    console.trace('resetChanges ВЫЗВАН');
     if (!originalImg) return;
 
     const img = new Image();
+
+    // функция которая выполняется автоматически
+    // как только изображение загрузилось в браузер
     img.onload = () => {
         setImageSize({ width: img.width, height: img.height });
         setCurrentImage(originalImg);
-        setVersions([versions[0]]); // Оставляем только первую версию
+        setVersions([versions[0]]);
         setCurrentVersion(0);
         resetParams(img.width, img.height);
     };
+
+    //url изображения которое нужно загрузить
     img.src = originalImg;
   }
 
@@ -536,34 +578,32 @@ function goNext() {
         return (
           <div className="Tools">
               <div className={activeTool === 'cropTool' ? 'active' : ''} onClick={ async () => {
-  setMode("crop");// если есть поворот или отражение — применяем их на сервере
-  if (turn !== 0 || flipHorizontal || flipVertical) {
-    await applyFilter(width, height, mode);
-    setTurn(0);
-    setFlipHorizontal(false);
-    setFlipVertical(false);
-  }
-
-  setIsCropping(true);}}>                      
+                if (turn !== 0 || flipHorizontal || flipVertical) {
+                  await applyFilter(width, height);
+                  setTurn(0);
+                  setFlipHorizontal(false);
+                  setFlipVertical(false);
+                }
+                setIsCropping(true);
+              }}>                      
                 <svg width="35px" height="35px" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" strokeWidth="3" stroke="currentColor" fill="none"><path d="M6.81,17.68H44.63a1,1,0,0,1,1,1v39"/><path d="M57.19,46.32H18.37a1,1,0,0,1-1-1v-39"/></svg>
                 <span>Обрезка</span>
               </div>
 
 
               {isCropping && (
-  <>
-    <button onClick={applyCrop} className="apply-btn">Применить обрезку</button>
-    <button onClick={() => setIsCropping(false)} className="cancel-btn">Отмена</button>
-  </>
-)}
+                <>
+                  <button onClick={applyCrop} className="apply-btn">Применить обрезку</button>
+                  <button onClick={() => setIsCropping(false)} className="cancel-btn">Отмена</button>
+                </>
+              )}
 
               <div className={activeTool === 'rotateTool' ? 'active' : ''} onClick={async () => { 
-    const newTurn = (turn + 90) % 360;
-  setTurn(newTurn);
-  setMode("rotate");
-  setHasChange(true);
-  setPreviewMode(true);
-}}>                              
+                const newTurn = (turn + 90) % 360;
+                setTurn(newTurn);
+                setHasChange(true);
+                setPreviewMode(true);
+              }}>                              
                 <svg width="35px" height="35px" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                   <path d="M16 7V10M16 10H13M16 10C14.9173 9.23345 13.9223 8.23101 12.5576 8.03902C11.6988 7.91819 10.824 8.07974 10.0649 8.4993C9.3059 8.91887 8.7038 9.57374 8.34934 10.3652C7.99489 11.1567 7.90728 12.042 8.09972 12.8876C8.29217 13.7332 8.75424 14.4933 9.41631 15.0535M15.7733 13.3292C15.4851 14.1471 14.9388 14.8493 14.2169 15.3298C13.4949 15.8103 12.6363 16.0432 11.7704 15.9934M4 6V4H20V20H4V10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
                 </svg>
@@ -571,11 +611,11 @@ function goNext() {
               </div>
 
               <div className={activeTool === 'flipHorizontal' ? 'active' : ''} onClick={async () => {
-  const newVal = !flipHorizontal;
-  setFlipHorizontal(newVal);
-  setMode("flip");
-  setHasChange(true);
-  setPreviewMode(true);}}>                     
+                const newVal = !flipHorizontal;
+                setFlipHorizontal(newVal);
+                setHasChange(true);
+                setPreviewMode(true);
+              }}>                     
                 <svg width="35px" height="35px" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
                   <path fillRule="evenodd" clipRule="evenodd" d="M15.079 3.46209C15.3762 3.17355 15.851 3.18054 16.1396 3.47771L19.538 6.9777C19.8205 7.26871 19.8205 7.73162 19.538 8.02263L16.1396 11.5226C15.851 11.8198 15.3762 11.8268 15.079 11.5382C14.7819 11.2497 14.7749 10.7749 15.0634 10.4777L17.2263 8.25015L4.99989 8.25015C4.58567 8.25015 4.24989 7.91437 4.24989 7.50015C4.24989 7.08594 4.58567 6.75015 4.99989 6.75015L17.2263 6.75015L15.0634 4.52264C14.7749 4.22546 14.7819 3.75064 15.079 3.46209ZM8.92071 12.4618C9.21788 12.7504 9.22488 13.2252 8.93633 13.5224L6.77327 15.7501L18.9999 15.7501C19.4141 15.7501 19.7499 16.0859 19.7499 16.5001C19.7499 16.9143 19.4141 17.2501 18.9999 17.2501L6.77366 17.2501L8.93633 19.4774C9.22488 19.7746 9.21788 20.2494 8.92071 20.538C8.62353 20.8265 8.14871 20.8195 7.86016 20.5224L4.46177 17.0224C4.17922 16.7314 4.17922 16.2685 4.46177 15.9774L7.86016 12.4775C8.14871 12.1803 8.62353 12.1733 8.92071 12.4618Z"/>
                 </svg>
@@ -583,12 +623,11 @@ function goNext() {
               </div>
 
               <div className={activeTool === 'flipVertical' ? 'active' : ''} onClick={async () => {
-  const newVal = !flipVertical;
-  setMode("flip");
-  setFlipVertical(newVal);
-  setHasChange(true);
-  setPreviewMode(true);
-}}>                    
+                  const newVal = !flipVertical;
+                  setFlipVertical(newVal);
+                  setHasChange(true);
+                  setPreviewMode(true);
+              }}>                    
                 <svg width="35px" height="35px" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
                   <path fillRule="evenodd" clipRule="evenodd" d="M7.49976 4.25001C7.91398 4.25001 8.24976 4.5858 8.24976 5.00001L8.24976 17.2266L10.4775 15.0636C10.7747 14.775 11.2495 14.782 11.538 15.0792C11.8266 15.3763 11.8196 15.8512 11.5224 16.1397L8.02243 19.5381C7.73142 19.8207 7.26851 19.8207 6.9775 19.5381L3.47751 16.1397C3.18034 15.8512 3.17335 15.3763 3.4619 15.0792C3.75044 14.782 4.22527 14.775 4.52244 15.0636L6.74976 17.2262L6.74976 5.00001C6.74976 4.5858 7.08555 4.25001 7.49976 4.25001Z"/>
                   <path fillRule="evenodd" clipRule="evenodd" d="M15.9773 4.4619C16.2683 4.17934 16.7312 4.17934 17.0222 4.4619L20.5222 7.86029C20.8193 8.14884 20.8263 8.62366 20.5378 8.92083C20.2492 9.21801 19.7744 9.225 19.4772 8.93645L17.2497 6.7736L17.2497 19C17.2497 19.4142 16.9139 19.75 16.4997 19.75C16.0855 19.75 15.7497 19.4142 15.7497 19L15.7497 6.77358L13.5222 8.93645C13.225 9.225 12.7502 9.21801 12.4616 8.92083C12.1731 8.62366 12.1801 8.14884 12.4773 7.86029L15.9773 4.4619Z"/>
@@ -685,7 +724,7 @@ function goNext() {
                 <input className="height" type="number" max={9999} min={10} onChange={toolChangeHeight} value={height}></input>
                 <span>px</span>
               </div>
-              {sizeChanges && (<button onClick={() => {setMode("resize"); applyFilter(width, height, mode)}} className="Btn" style={{border: 'none'}}>Применить изменения</button>)}
+              {sizeChanges && (<button onClick={() => { applyFilter(width, height)}} className="Btn" style={{border: 'none'}}>Применить изменения</button>)}
             </div>
         );
     }
@@ -714,7 +753,7 @@ function goNext() {
 
     setModalName(`save_${Date.now()}`);
     setModalOpen(true);
-    document.body.style.overflow = 'auto';
+    document.body.style.overflow = 'none';
   }
 
   function closeModal() {
@@ -723,7 +762,7 @@ function goNext() {
   }
 
   async function saveImg() {
-    const cleanPath = currentImage.split('?')[0];
+    const cleanPath = currentImage.split('?')[0]; // избавление от параметров в url
     const save = {
       path: cleanPath,
       name: modalName,
@@ -738,18 +777,18 @@ function goNext() {
       });
 
       if (res.ok) {
-        const blob = await res.blob();
+        const blob = await res.blob(); // читаем ответ сервера как бинарные данные
 
-        const url = window.URL.createObjectURL(blob);
+        const url = window.URL.createObjectURL(blob); // временный url для blob-объекта
         const link = document.createElement('a');
-        link.href = url;
-        link.download = `${modalName}.${modalFormat.toLowerCase()}`;
+        link.href = url; // создание ссылки которая указывает на url объекта blob
+        link.download = `${modalName}.${modalFormat.toLowerCase()}`; // атрибут для скачивания файла
 
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
         
-        window.URL.revokeObjectURL(url);
+        window.URL.revokeObjectURL(url); // очищение временного url
           
         const conf = window.confirm('Файл скачан. Хотите загрузить новое изображение?');
 
@@ -775,8 +814,7 @@ function goNext() {
       }
       else {
         const error = await res.json();
-            console.error('Ошибка сервера:', error);
-            alert('Ошибка: ' + error.message);
+        alert('Ошибка: ' + error.message);
       }
     }
 
@@ -789,7 +827,6 @@ function goNext() {
   }
 
   function clickLock() {
-    setModalLock(!modalLock);
     setSizeLock(!sizeLock);
   }
 
@@ -816,7 +853,7 @@ function goNext() {
           <a className="Btn" title="Сохранить изображение на компьютер" onClick={openModal}>Сохранить</a>
 
           <div className="ReturnButtons">
-            {hasChange && (<button onClick={() => applyFilter(width, height, mode)} className="Btn" style={{border: 'none'}}>Применить изменения</button>)}
+            {hasChange && (<button onClick={() => applyFilter(width, height)} className="Btn" style={{border: 'none'}}>Применить изменения</button>)}
             <div onClick={resetChanges}>
               <svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" fill="none" viewBox="0 0 128 128" id="refresh">
                 <path stroke="#000" strokeLinecap="round" strokeWidth="5" d="M26 64.5C26 43.237 43.237 26 64.5 26 76.4556 26 87.1383 31.4495 94.1999 40M102.979 64.5C102.979 85.763 85.742 103 64.479 103 52.5234 103 41.8407 97.5505 34.7791 89M25.0846 97.0845V81.4154C25.0846 78.9301 27.0993 76.9154 29.5846 76.9154L44.9152 76.9154M104 32V47.6691C104 50.1544 101.985 52.1691 99.4999 52.1691L84.1692 52.1691"></path>
@@ -899,7 +936,7 @@ function goNext() {
               {!currentImage ? (
                 <div className="form">
                   <p>Загрузите изображение, чтобы начать</p>
-                  <input type="file" id="fileInput" accept="image/*" style={{ display: 'none' }} onChange={fileUpload}/>
+                  <input type="file" id="fileInput" style={{ display: 'none' }} onChange={fileUpload}/>
                   <button className="Btn-select" onClick={() => document.getElementById('fileInput').click()} >Выбрать файл</button>
                 </div>
               ) : (

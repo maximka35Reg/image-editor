@@ -1,5 +1,5 @@
 FROM node
-WoRKDIR /app
+WORKDIR /app
 COPY client/package*.json ./
 RUN npm install
 COPY client/ ./
